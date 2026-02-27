@@ -43,6 +43,7 @@ jobs:
             <url>https://github.com/xxMudCloudxx/cumt-campus-ant/releases/latest/download/CampusNetAssistant.zip</url>
             <changelog>https://github.com/xxMudCloudxx/cumt-campus-ant/releases/tag/${{ github.ref_name }}</changelog>
             <mandatory>false</mandatory>
+            <args></args>
           </item>
           "@
           $xml | Out-File -Encoding utf8 update.xml

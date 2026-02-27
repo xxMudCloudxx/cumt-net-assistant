@@ -43,6 +43,7 @@ namespace CampusNetAssistant
         private AppConfig _config = new();
         private bool _adapterDisabled = false;
         private bool _firstShow = true;
+        private bool _isManualUpdateCheck = false;
 
         // ══════════════ 构造 ══════════════
         public MainForm()
@@ -55,6 +56,9 @@ namespace CampusNetAssistant
             _monitor.StatusChanged    += msg => Invoke(() => SetStatus(msg, Warning));
             _monitor.ReloginRequested += AutoLoginAsync;
 
+            // ── 更新检查事件绑定 ──
+            AutoUpdater.CheckForUpdateEvent += OnUpdateCheckComplete;
+
             if (_config.AutoLogin && !string.IsNullOrEmpty(_config.StudentId))
             {
                 _ = DoLoginAsync(silent: false);
@@ -63,6 +67,68 @@ namespace CampusNetAssistant
 
             // ── 自动检查更新 ──
             CheckForUpdates();
+        }
+
+        private void OnUpdateCheckComplete(UpdateInfoEventArgs args)
+        {
+            if (args.Error == null)
+            {
+                if (!args.IsUpdateAvailable && _isManualUpdateCheck)
+                {
+                    // 只在手动检查时显示"已是最新版本"提示
+                    MessageBox.Show(
+                        $"当前已是最新版本 v{args.InstalledVersion}",
+                        "检查更新",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                }
+                // 有新版本时由AutoUpdater自动显示对话框
+            }
+            else if (_isManualUpdateCheck)
+            {
+                // 只在手动检查时显示错误提示
+                var errorMsg = args.Error.Message;
+                var friendlyMsg = "";
+                
+                // 针对常见错误提供友好提示
+                if (errorMsg.Contains("non-existing field") || errorMsg.Contains("字段"))
+                {
+                    friendlyMsg = "更新服务器配置异常。\n\n" +
+                                 "这可能是因为当前版本尚未发布到 GitHub，或网络连接问题。\n\n" +
+                                 "是否访问 GitHub Releases 页面手动检查更新？";
+                }
+                else if (errorMsg.Contains("远程名称无法解析") || errorMsg.Contains("network") || errorMsg.Contains("连接"))
+                {
+                    friendlyMsg = "网络连接失败，无法访问更新服务器。\n\n是否访问 GitHub Releases 页面手动检查更新？";
+                }
+                else
+                {
+                    friendlyMsg = $"检查更新失败：{errorMsg}\n\n是否访问 GitHub Releases 页面手动检查更新？";
+                }
+                
+                var result = MessageBox.Show(
+                    friendlyMsg,
+                    "检查更新",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning
+                );
+                
+                if (result == DialogResult.Yes)
+                {
+                    try
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "https://github.com/xxMudCloudxx/cumt-campus-ant/releases",
+                            UseShellExecute = true
+                        });
+                    }
+                    catch { }
+                }
+            }
+            
+            _isManualUpdateCheck = false; // 重置标志
         }
 
         private void CheckForUpdates()
@@ -84,7 +150,52 @@ namespace CampusNetAssistant
             AutoUpdater.ShowSkipButton = true;
             AutoUpdater.ShowRemindLaterButton = true;
             AutoUpdater.RunUpdateAsAdmin = false;
-            AutoUpdater.Start("https://github.com/xxMudCloudxx/cumt-campus-ant/releases/latest/download/update.xml");
+            
+            // 添加错误处理，避免因网络或服务器问题导致程序异常
+            try
+            {
+                AutoUpdater.Start("https://github.com/xxMudCloudxx/cumt-campus-ant/releases/latest/download/update.xml");
+            }
+            catch (Exception ex)
+            {
+                // 更新检查失败时静默处理，不影响主程序
+                if (_isManualUpdateCheck)
+                {
+                    MessageBox.Show(
+                        $"无法连接到更新服务器：{ex.Message}",
+                        "检查更新",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
+                }
+            }
+        }
+
+        private void CheckForUpdatesManually()
+        {
+            _isManualUpdateCheck = true;
+            
+            // 检查是否是本地测试/开发版本
+            var rawVersion = Application.ProductVersion;
+            if (rawVersion.Contains("-") || rawVersion.Contains("+"))
+            {
+                var result = MessageBox.Show(
+                    $"当前版本 ({rawVersion}) 是开发/测试版本。\n\n" +
+                    "更新检查可能会失败，因为该版本尚未发布到 GitHub。\n\n" +
+                    "是否仍要继续检查更新？",
+                    "检查更新",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Information
+                );
+                
+                if (result == DialogResult.No)
+                {
+                    _isManualUpdateCheck = false;
+                    return;
+                }
+            }
+            
+            CheckForUpdates();
         }
 
         // ── 仅在自动登录已配置时隐藏窗体到托盘 ──
@@ -127,7 +238,7 @@ namespace CampusNetAssistant
             _trayMenu.Items.Add("⛔ 断开校园网",      null, async (_, _) => await DoLogoutAsync());
             _trayMenu.Items.Add(new ToolStripSeparator());
             _trayMenu.Items.Add("🔌 禁用/启用以太网", null, (_, _) => ToggleAdapter());
-            _trayMenu.Items.Add("🔄 检查更新",        null, (_, _) => CheckForUpdates());
+            _trayMenu.Items.Add("🔄 检查更新",        null, (_, _) => CheckForUpdatesManually());
             _trayMenu.Items.Add(new ToolStripSeparator());
             _trayMenu.Items.Add("❌ 退出", null, (_, _) =>
             {
@@ -435,7 +546,7 @@ namespace CampusNetAssistant
 
             _btnCheckUpdate = MakeButton(body, "🔄 检查更新", 215, y, 185, 42,
                 Color.FromArgb(59, 130, 246), Color.FromArgb(37, 99, 235));
-            _btnCheckUpdate.Click += (_, _) => CheckForUpdates();
+            _btnCheckUpdate.Click += (_, _) => CheckForUpdatesManually();
 
             y += 60;
 
