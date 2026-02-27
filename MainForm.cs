@@ -1,7 +1,4 @@
 using System.Drawing.Drawing2D;
-using System.IO;
-using System.Text;
-using Svg;
 using AutoUpdaterDotNET;
 
 namespace CampusNetAssistant
@@ -75,14 +72,18 @@ namespace CampusNetAssistant
             AutoUpdater.Start("https://github.com/xxMudCloudxx/cumt-campus-ant/releases/latest/download/update.xml");
         }
 
-        // ── 启动时隐藏窗体，直接进托盘 ──
+        // ── 仅在自动登录已配置时隐藏窗体到托盘 ──
         protected override void SetVisibleCore(bool value)
         {
             if (_firstShow)
             {
                 _firstShow = false;
-                base.SetVisibleCore(false);
-                return;
+                // 已配置自动登录时才隐藏到托盘，否则正常显示主窗口
+                if (_config.AutoLogin && !string.IsNullOrEmpty(_config.StudentId))
+                {
+                    base.SetVisibleCore(false);
+                    return;
+                }
             }
             base.SetVisibleCore(value);
         }
@@ -132,59 +133,35 @@ namespace CampusNetAssistant
                 ContextMenuStrip = _trayMenu,
                 Visible          = true
             };
-            _trayIcon.DoubleClick += (_, _) => ShowForm();
+            // 左键单击显示主窗口，右键显示菜单
+            _trayIcon.MouseClick += (_, e) =>
+            {
+                if (e.Button == MouseButtons.Left)
+                    ShowForm();
+            };
         }
 
         private Icon CreateTrayIcon()
         {
             try
             {
-                // 读取图标的 svg 文件
-                var svgPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icon.svg");
-                if (!File.Exists(svgPath))
-                {
-                    // 开发环境下可能文件在项目根目录
-                    svgPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "icon.svg");
-                }
-
-                if (File.Exists(svgPath))
-                {
-                    var svgContent = File.ReadAllText(svgPath);
-                    // 将黑色改为白色以适配原有的蓝色主色调底色，如果不需要可以注释掉替换
-                    svgContent = svgContent.Replace("fill=\"#000000\"", "fill=\"#ffffff\"");
-                    
-                    using var ms = new MemoryStream(Encoding.UTF8.GetBytes(svgContent));
-                    var svgDoc = SvgDocument.Open<SvgDocument>(ms);
-                    
-                    var bmp = new Bitmap(64, 64);
-                    using var g = Graphics.FromImage(bmp);
-                    g.SmoothingMode = SmoothingMode.AntiAlias;
-
-                    // 绘制圆形图标底色
-                    using var brush = new SolidBrush(Primary);
-                    g.FillEllipse(brush, 2, 2, 60, 60);
-
-                    // 绘制 SVG 图标 (偏移一定量)
-                    var iconBmp = svgDoc.Draw(40, 40);
-                    g.DrawImage(iconBmp, 12, 12);
-                    
-                    return Icon.FromHandle(bmp.GetHicon());
-                }
+                // 优先使用 EXE 内嵌图标
+                var icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+                if (icon != null)
+                    return new Icon(icon, 64, 64);
             }
-            catch
-            {
-                // Fallback icon logic if something goes wrong
-            }
-            
-            // 失败时回退到默认圆圈字符C
-            var fallbackBmp = new Bitmap(64, 64);
-            using var fg = Graphics.FromImage(fallbackBmp);
-            fg.SmoothingMode = SmoothingMode.AntiAlias;
-            using var fBrush = new SolidBrush(Primary);
-            fg.FillEllipse(fBrush, 2, 2, 60, 60);
-            using var fFont = new Font("Microsoft YaHei", 32f, FontStyle.Bold);
-            TextRenderer.DrawText(fg, "C", fFont, new Rectangle(0, 0, 64, 64), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-            return Icon.FromHandle(fallbackBmp.GetHicon());
+            catch { }
+
+            // 回退：程序化绘制网络图标
+            var bmp = new Bitmap(64, 64);
+            using var g = Graphics.FromImage(bmp);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using var brush = new SolidBrush(Primary);
+            g.FillEllipse(brush, 2, 2, 60, 60);
+            using var font = new Font("Microsoft YaHei", 32f, FontStyle.Bold);
+            TextRenderer.DrawText(g, "C", font, new Rectangle(0, 0, 64, 64), Color.White,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            return Icon.FromHandle(bmp.GetHicon());
         }
 
         private class ModernColorTable : ProfessionalColorTable
