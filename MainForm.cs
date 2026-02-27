@@ -35,6 +35,7 @@ namespace CampusNetAssistant
         private Button    _btnLogout     = null!;
         private Button    _btnToggle     = null!;
         private Button    _btnRefresh    = null!;
+        private Button    _btnCheckUpdate = null!;
         private Label     _lblStatus     = null!;
 
         // ══════════════ 业务 ══════════════
@@ -126,6 +127,7 @@ namespace CampusNetAssistant
             _trayMenu.Items.Add("⛔ 断开校园网",      null, async (_, _) => await DoLogoutAsync());
             _trayMenu.Items.Add(new ToolStripSeparator());
             _trayMenu.Items.Add("🔌 禁用/启用以太网", null, (_, _) => ToggleAdapter());
+            _trayMenu.Items.Add("🔄 检查更新",        null, (_, _) => CheckForUpdates());
             _trayMenu.Items.Add(new ToolStripSeparator());
             _trayMenu.Items.Add("❌ 退出", null, (_, _) =>
             {
@@ -430,6 +432,10 @@ namespace CampusNetAssistant
             _btnToggle = MakeButton(body, "🔌 禁用网卡", 20, y, 185, 42,
                 Color.FromArgb(107, 114, 128), Color.FromArgb(75, 85, 99));
             _btnToggle.Click += (_, _) => ToggleAdapter();
+
+            _btnCheckUpdate = MakeButton(body, "🔄 检查更新", 215, y, 185, 42,
+                Color.FromArgb(59, 130, 246), Color.FromArgb(37, 99, 235));
+            _btnCheckUpdate.Click += (_, _) => CheckForUpdates();
 
             y += 60;
 
