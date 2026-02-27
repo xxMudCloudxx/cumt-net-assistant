@@ -7,19 +7,19 @@ namespace CampusNetAssistant
     public class MainForm : Form
     {
         // ══════════════ 颜色主题 ══════════════
-        private static readonly Color Primary      = Color.FromArgb(79, 70, 229);
-        private static readonly Color PrimaryDark   = Color.FromArgb(67, 56, 202);
-        private static readonly Color Danger        = Color.FromArgb(239, 68, 68);
-        private static readonly Color DangerDark    = Color.FromArgb(220, 38, 38);
-        private static readonly Color Success       = Color.FromArgb(34, 197, 94);
-        private static readonly Color Warning       = Color.FromArgb(245, 158, 11);
-        private static readonly Color BgColor       = Color.FromArgb(243, 244, 246);
+        private static readonly Color Primary       = Color.FromArgb(99, 102, 241);   // Indigo 500
+        private static readonly Color PrimaryDark   = Color.FromArgb(79, 70, 229);    // Indigo 600
+        private static readonly Color Danger        = Color.FromArgb(244, 63, 94);    // Rose 500
+        private static readonly Color DangerDark    = Color.FromArgb(225, 29, 72);    // Rose 600
+        private static readonly Color Success       = Color.FromArgb(16, 185, 129);   // Emerald 500
+        private static readonly Color Warning       = Color.FromArgb(245, 158, 11);   // Amber 500
+        private static readonly Color BgColor       = Color.FromArgb(248, 250, 252);  // Slate 50
         private static readonly Color CardBg        = Color.White;
-        private static readonly Color HeaderStart   = Color.FromArgb(79, 70, 229);
-        private static readonly Color HeaderEnd     = Color.FromArgb(124, 58, 237);
-        private static readonly Color TextDark      = Color.FromArgb(31, 41, 55);
-        private static readonly Color TextMuted     = Color.FromArgb(107, 114, 128);
-        private static readonly Color BorderClr     = Color.FromArgb(209, 213, 219);
+        private static readonly Color HeaderStart   = Color.FromArgb(56, 189, 248);   // Sky 400
+        private static readonly Color HeaderEnd     = Color.FromArgb(99, 102, 241);   // Indigo 500
+        private static readonly Color TextDark      = Color.FromArgb(15, 23, 42);     // Slate 900
+        private static readonly Color TextMuted     = Color.FromArgb(100, 116, 139);  // Slate 500
+        private static readonly Color BorderClr     = Color.FromArgb(226, 232, 240);  // Slate 200
 
         // ══════════════ 控件 ══════════════
         private NotifyIcon   _trayIcon   = null!;
@@ -490,114 +490,102 @@ namespace CampusNetAssistant
         {
             // ── 窗体基本属性 ──
             Text            = "CUMT校园网助手";
-            Size            = new Size(440, 620);
+            Size            = new Size(460, 720);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox     = false;
             StartPosition   = FormStartPosition.CenterScreen;
             BackColor       = BgColor;
-            Font            = new Font("Microsoft YaHei UI", 9.5f);
+            Font            = new Font("Microsoft YaHei UI", 10f);
 
             // ── 渐变头部面板 ──
-            var header = new Panel { Dock = DockStyle.Top, Height = 80 };
+            var header = new Panel { Dock = DockStyle.Top, Height = 100 };
             header.Paint += (s, e) =>
             {
                 using var brush = new LinearGradientBrush(
                     header.ClientRectangle, HeaderStart, HeaderEnd, 45f);
                 e.Graphics.FillRectangle(brush, header.ClientRectangle);
 
-                using var titleFont = new Font("Microsoft YaHei UI", 18f, FontStyle.Bold);
+                using var titleFont = new Font("Microsoft YaHei UI", 20f, FontStyle.Bold);
                 TextRenderer.DrawText(e.Graphics, "CUMT校园网助手", titleFont,
-                    new Point(20, 14), Color.White);
+                    new Point(24, 22), Color.White);
 
-                using var subFont = new Font("Microsoft YaHei UI", 9f);
+                using var subFont = new Font("Microsoft YaHei UI", 9.5f);
                 TextRenderer.DrawText(e.Graphics, "⚡ 轻量 · 高效 · 自动", subFont,
-                    new Point(22, 50), Color.FromArgb(200, 255, 255, 255));
+                    new Point(28, 62), Color.FromArgb(220, 255, 255, 255));
             };
             Controls.Add(header);
 
             // ── 主内容区 ──
             var body = new Panel
             {
-                Location = new Point(0, 80),
-                Size     = new Size(440, 510),
-                Padding  = new Padding(20, 15, 20, 10)
+                Location = new Point(0, 100),
+                Size     = new Size(460, 600),
+                Padding  = new Padding(24, 20, 24, 20)
             };
             Controls.Add(body);
 
-            int y = 10;
+            int y = 16;
 
             // ── 账号信息卡片 ──
-            var card1 = MakeCard(body, "账号信息", ref y, 175);
-            int cy = 30;
-            MakeLabel(card1,   "学号", 15, cy);
-            _txtStudentId = MakeTextBox(card1, 80, cy, 280); cy += 38;
-            MakeLabel(card1,   "密码", 15, cy);
-            _txtPassword  = MakeTextBox(card1, 80, cy, 280, isPassword: true); cy += 38;
-            MakeLabel(card1,   "运营商", 15, cy);
-            _cboOperator  = MakeComboBox(card1, 80, cy, 280,
+            var card1 = MakeCard(body, "账号信息", ref y, 190);
+            int cy = 44;
+            MakeLabel(card1,   "学号", 20, cy);
+            _txtStudentId = MakeTextBox(card1, 90, cy, 280); cy += 44;
+            MakeLabel(card1,   "密码", 20, cy);
+            _txtPassword  = MakeTextBox(card1, 90, cy, 280, isPassword: true); cy += 44;
+            MakeLabel(card1,   "运营商", 20, cy);
+            _cboOperator  = MakeComboBox(card1, 90, cy, 280,
                 new[] { "校园网", "中国电信", "中国联通", "中国移动" });
 
-            y += 10;
+            y += 16;
 
             // ── 网络设置卡片 ──
-            var card2 = MakeCard(body, "网络设置", ref y, 135);
-            cy = 30;
-            MakeLabel(card2, "网络适配器", 15, cy);
-            _cboAdapter = MakeComboBox(card2, 100, cy, 220);
-            _btnRefresh = MakeSmallBtn(card2, "🔄", 330, cy - 2, 40);
+            var card2 = MakeCard(body, "网络设置", ref y, 145);
+            cy = 44;
+            MakeLabel(card2, "适配器", 20, cy);
+            _cboAdapter = MakeComboBox(card2, 90, cy, 218);
+            _btnRefresh = MakeCircularIconButton(card2, "⟳", 318, cy - 2, 34, 15f);
             _btnRefresh.Click += (_, _) => RefreshAdapters();
-            cy += 38;
-            _chkAutoStart = MakeCheckBox(card2, "开机自启",  15, cy);
+            cy += 48;
+            _chkAutoStart = MakeCheckBox(card2, "开机自启",  20, cy);
             _chkAutoLogin = MakeCheckBox(card2, "自动登录", 160, cy);
 
-            y += 10;
+            y += 24;
 
             // ── 操作按钮 ──
-            _btnLogin = MakeButton(body, "🔐 保存并登录", 20, y, 185, 42, Primary, PrimaryDark);
+            _btnLogin = MakeButton(body, "🔐 保存并登录", 26, y, 196, 48, Primary, PrimaryDark);
             _btnLogin.Click += async (_, _) => { SaveConfig(); await DoLoginAsync(); };
 
-            _btnLogout = MakeButton(body, "⛔ 断开校园网", 215, y, 185, 42, Danger, DangerDark);
+            _btnLogout = MakeButton(body, "⛔ 断开校园网", 232, y, 196, 48, Danger, DangerDark);
             _btnLogout.Click += async (_, _) => await DoLogoutAsync();
 
-            y += 52;
+            y += 64;
 
-            _btnToggle = MakeButton(body, "🔌 禁用网卡", 20, y, 185, 42,
-                Color.FromArgb(107, 114, 128), Color.FromArgb(75, 85, 99));
+            _btnToggle = MakeButton(body, "🔌 禁用网卡", 26, y, 196, 48,
+                Color.FromArgb(148, 163, 184), Color.FromArgb(100, 116, 139));
             _btnToggle.Click += (_, _) => ToggleAdapter();
 
-            _btnCheckUpdate = MakeButton(body, "🔄 检查更新", 215, y, 185, 42,
-                Color.FromArgb(59, 130, 246), Color.FromArgb(37, 99, 235));
+            _btnCheckUpdate = MakeButton(body, "🔄 检查更新", 232, y, 196, 48,
+                Color.FromArgb(56, 189, 248), Color.FromArgb(2, 132, 199));
             _btnCheckUpdate.Click += (_, _) => CheckForUpdatesManually();
 
-            y += 60;
+            y += 76;
 
             // ── 状态栏 ──
             _lblStatus = new Label
             {
                 Text      = "就绪",
-                Location  = new Point(20, y),
-                Size      = new Size(340, 22),
+                Location  = new Point(26, y),
+                Size      = new Size(330, 24),
                 ForeColor = TextMuted,
-                Font      = new Font("Microsoft YaHei UI", 9f),
+                Font      = new Font("Microsoft YaHei UI", 9.5f),
                 TextAlign = ContentAlignment.MiddleLeft,
             };
             body.Controls.Add(_lblStatus);
 
             // ── 关于按钮 ──
-            _btnAbout = new Button
-            {
-                Text      = "?",
-                Location  = new Point(370, y - 2),
-                Size      = new Size(30, 26),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(229, 231, 235),
-                ForeColor = TextDark,
-                Font      = new Font("Microsoft YaHei UI", 11f, FontStyle.Bold),
-                Cursor    = Cursors.Hand,
-            };
-            _btnAbout.FlatAppearance.BorderSize = 0;
+            _btnAbout = MakeShadowIconButton(body, "?", 392, y - 6, 36, 14f);
             _btnAbout.Click += (_, _) => ShowAboutDialog();
-            body.Controls.Add(_btnAbout);
         }
 
         private void SetStatus(string text, Color color)
@@ -753,123 +741,270 @@ namespace CampusNetAssistant
         {
             var card = new Panel
             {
-                Location    = new Point(20, y),
-                Size        = new Size(380, height),
-                BackColor   = CardBg,
+                Location    = new Point(24, y),
+                Size        = new Size(404, height),
+                BackColor   = Color.Transparent, 
             };
-            card.Paint += (s, e) =>
+            
+            var innerCard = new Panel
+            {
+                Location  = new Point(0, 0),
+                Size      = new Size(404, height),
+                BackColor = Color.Transparent,
+            };
+
+            innerCard.Paint += (s, e) =>
             {
                 var g = e.Graphics;
                 g.SmoothingMode = SmoothingMode.AntiAlias;
 
-                // 圆角背景
-                using var path = RoundedRect(card.ClientRectangle, 10);
+                using var path = RoundedRect(new Rectangle(0, 0, innerCard.Width - 1, innerCard.Height - 1), 12);
+                
                 using var fill = new SolidBrush(CardBg);
                 g.FillPath(fill, path);
 
-                // 边框
                 using var pen = new Pen(BorderClr, 1f);
                 g.DrawPath(pen, path);
 
-                // 标题
-                using var font = new Font("Microsoft YaHei UI", 9f, FontStyle.Bold);
-                TextRenderer.DrawText(g, title, font, new Point(15, 8), Primary);
+                using var font = new Font("Microsoft YaHei UI", 10.5f, FontStyle.Bold);
+                TextRenderer.DrawText(g, title, font, new Point(20, 14), PrimaryDark);
+                
+                using var sepPen = new Pen(Color.FromArgb(241, 245, 249), 1f);
+                g.DrawLine(sepPen, 20, 40, innerCard.Width - 20, 40);
             };
+            card.Controls.Add(innerCard);
             parent.Controls.Add(card);
             y += height;
-            return card;
+            return innerCard;
         }
 
-        private static Label MakeLabel(Control parent, string text, int x, int y)
+        private Label MakeLabel(Control parent, string text, int x, int y)
         {
             var lbl = new Label
             {
                 Text      = text,
                 Location  = new Point(x, y + 4),
                 AutoSize  = true,
-                ForeColor = TextDark,
+                ForeColor = TextMuted,
             };
             parent.Controls.Add(lbl);
             return lbl;
         }
 
-        private static TextBox MakeTextBox(Control parent, int x, int y, int w, bool isPassword = false)
+        private TextBox MakeTextBox(Control parent, int x, int y, int w, bool isPassword = false)
         {
+            var pnl = new Panel
+            {
+                Location  = new Point(x, y),
+                Size      = new Size(w, 32),
+                BackColor = Color.Transparent
+            };
+            pnl.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using var path = RoundedRect(new Rectangle(0, 0, w - 1, 31), 6);
+                using var fill = new SolidBrush(Color.FromArgb(248, 250, 252));
+                e.Graphics.FillPath(fill, path);
+                using var pen = new Pen(BorderClr, 1f);
+                e.Graphics.DrawPath(pen, path);
+            };
+
             var txt = new TextBox
             {
-                Location         = new Point(x, y),
-                Size             = new Size(w, 28),
-                BorderStyle      = BorderStyle.FixedSingle,
+                Location         = new Point(8, 6),
+                Size             = new Size(w - 16, 20),
+                BorderStyle      = BorderStyle.None,
+                BackColor        = Color.FromArgb(248, 250, 252),
+                ForeColor        = TextDark,
+                Font             = new Font("Microsoft YaHei UI", 10f),
                 UseSystemPasswordChar = isPassword,
             };
-            parent.Controls.Add(txt);
+            
+            pnl.Controls.Add(txt);
+            parent.Controls.Add(pnl);
             return txt;
         }
 
-        private static ComboBox MakeComboBox(Control parent, int x, int y, int w, string[]? items = null)
+        private ComboBox MakeComboBox(Control parent, int x, int y, int w, string[]? items = null)
         {
+            var pnl = new Panel
+            {
+                Location  = new Point(x, y),
+                Size      = new Size(w, 32),
+                BackColor = Color.Transparent
+            };
+            pnl.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using var path = RoundedRect(new Rectangle(0, 0, w - 1, 31), 6);
+                using var fill = new SolidBrush(Color.FromArgb(248, 250, 252));
+                e.Graphics.FillPath(fill, path);
+                using var pen = new Pen(BorderClr, 1f);
+                e.Graphics.DrawPath(pen, path);
+            };
+
             var cbo = new ComboBox
             {
-                Location      = new Point(x, y),
-                Size          = new Size(w, 28),
+                Location      = new Point(4, 4),
+                Size          = new Size(w - 8, 28),
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 FlatStyle     = FlatStyle.Flat,
+                BackColor     = Color.FromArgb(248, 250, 252),
+                ForeColor     = TextDark,
+                Font          = new Font("Microsoft YaHei UI", 9.5f)
             };
             if (items != null)
             {
                 cbo.Items.AddRange(items);
                 cbo.SelectedIndex = 0;
             }
-            parent.Controls.Add(cbo);
+            pnl.Controls.Add(cbo);
+            parent.Controls.Add(pnl);
             return cbo;
         }
 
-        private static CheckBox MakeCheckBox(Control parent, string text, int x, int y)
+        private CheckBox MakeCheckBox(Control parent, string text, int x, int y)
         {
             var chk = new CheckBox
             {
-                Text     = text,
-                Location = new Point(x, y),
-                AutoSize = true,
+                Text      = text,
+                Location  = new Point(x, y),
+                AutoSize  = true,
                 ForeColor = TextDark,
             };
             parent.Controls.Add(chk);
             return chk;
         }
 
-        private static Button MakeButton(Control parent, string text, int x, int y,
+        private Button MakeButton(Control parent, string text, int x, int y,
             int w, int h, Color bg, Color bgHover)
         {
             var btn = new Button
             {
-                Text      = text,
+                Text      = "",
                 Location  = new Point(x, y),
                 Size      = new Size(w, h),
                 FlatStyle = FlatStyle.Flat,
-                BackColor = bg,
-                ForeColor = Color.White,
-                Font      = new Font("Microsoft YaHei UI", 10f, FontStyle.Bold),
+                BackColor = Color.Transparent,
                 Cursor    = Cursors.Hand,
             };
             btn.FlatAppearance.BorderSize = 0;
-            btn.FlatAppearance.MouseOverBackColor = bgHover;
+            btn.FlatAppearance.MouseDownBackColor = Color.Transparent;
+            btn.FlatAppearance.MouseOverBackColor = Color.Transparent;
+            
+            bool isHovered = false;
+            btn.MouseEnter += (s, e) => { isHovered = true; btn.Invalidate(); };
+            btn.MouseLeave += (s, e) => { isHovered = false; btn.Invalidate(); };
+
+            btn.Paint += (s, e) => {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                using var path = RoundedRect(new Rectangle(0, 0, w - 1, h - 1), 8);
+                using var fill = new SolidBrush(isHovered ? bgHover : bg);
+                g.FillPath(fill, path);
+                
+                using var font = new Font("Microsoft YaHei UI", 10.5f, FontStyle.Bold);
+                TextRenderer.DrawText(g, text, font, new Rectangle(0, 0, w, h), Color.White,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            
             parent.Controls.Add(btn);
             return btn;
         }
 
-        private static Button MakeSmallBtn(Control parent, string text, int x, int y, int w)
+        private Button MakeCircularIconButton(Control parent, string text, int x, int y, int size, float fontSize)
         {
             var btn = new Button
             {
-                Text      = text,
+                Text      = "",
                 Location  = new Point(x, y),
-                Size      = new Size(w, 28),
+                Size      = new Size(size, size),
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(229, 231, 235),
-                ForeColor = TextDark,
+                BackColor = Color.Transparent,
                 Cursor    = Cursors.Hand,
             };
             btn.FlatAppearance.BorderSize = 0;
+            btn.FlatAppearance.MouseDownBackColor = Color.Transparent;
+            btn.FlatAppearance.MouseOverBackColor = Color.Transparent;
+
+            Color bgHover = Color.FromArgb(241, 245, 249); // Slate 100
+            bool isHovered = false;
+            
+            btn.MouseEnter += (s, e) => { isHovered = true; btn.Invalidate(); };
+            btn.MouseLeave += (s, e) => { isHovered = false; btn.Invalidate(); };
+
+            btn.Paint += (s, e) => {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                
+                if (isHovered) {
+                    var rect = new Rectangle(0, 0, size - 1, size - 1);
+                    using var fill = new SolidBrush(bgHover);
+                    g.FillEllipse(fill, rect);
+                }
+                
+                using var font = new Font("Segoe UI", fontSize, FontStyle.Bold);
+                // Adjust string rectangle slightly down to visually center
+                g.DrawString(text, font, new SolidBrush(TextDark), 
+                    new Rectangle(0, 2, size, size), 
+                    new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+            };
+            
+            parent.Controls.Add(btn);
+            return btn;
+        }
+
+        private Button MakeShadowIconButton(Control parent, string text, int x, int y, int size, float fontSize)
+        {
+            int shadowOffset = 3;
+            int totalSize = size + shadowOffset * 2 + 1;
+            var btn = new Button
+            {
+                Text      = "",
+                Location  = new Point(x - shadowOffset, y - shadowOffset),
+                Size      = new Size(totalSize, totalSize),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.Transparent,
+                Cursor    = Cursors.Hand,
+            };
+            btn.FlatAppearance.BorderSize = 0;
+            btn.FlatAppearance.MouseDownBackColor = Color.Transparent;
+            btn.FlatAppearance.MouseOverBackColor = Color.Transparent;
+            
+            Color bg = Color.White;
+            Color bgHover = Color.FromArgb(248, 250, 252);
+            bool isHovered = false;
+            
+            btn.MouseEnter += (s, e) => { isHovered = true; btn.Invalidate(); };
+            btn.MouseLeave += (s, e) => { isHovered = false; btn.Invalidate(); };
+
+            btn.Paint += (s, e) => {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                
+                // Draw circular shadow
+                using var shadowBrush = new SolidBrush(Color.FromArgb(30, 0, 0, 0)); // Light shadow
+                g.FillEllipse(shadowBrush, new Rectangle(shadowOffset, shadowOffset + 1, size, size));
+                
+                // Draw main circular button
+                int yOffset = isHovered ? 1 : 0;
+                var buttonRect = new Rectangle(shadowOffset, shadowOffset - yOffset, size - 1, size - 1);
+                
+                using var fill = new SolidBrush(isHovered ? bgHover : bg);
+                g.FillEllipse(fill, buttonRect);
+                
+                using var pen = new Pen(BorderClr, 1f);
+                g.DrawEllipse(pen, buttonRect);
+                
+                using var font = new Font("Segoe UI", fontSize, FontStyle.Bold);
+                var textRect = new Rectangle(shadowOffset, shadowOffset - yOffset , size, size);
+                g.DrawString(text, font, new SolidBrush(TextDark), 
+                    textRect, 
+                    new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+            };
+            
             parent.Controls.Add(btn);
             return btn;
         }
