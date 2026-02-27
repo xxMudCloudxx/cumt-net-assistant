@@ -90,27 +90,63 @@ namespace CampusNetAssistant
         private void BuildTray()
         {
             _trayMenu = new ContextMenuStrip();
-            _trayMenu.Items.Add("打开主面板",     null, (_, _) => ShowForm());
-            _trayMenu.Items.Add("立即登录",       null, async (_, _) => await DoLoginAsync());
-            _trayMenu.Items.Add("断开校园网",     null, async (_, _) => await DoLogoutAsync());
-            _trayMenu.Items.Add("-");
-            _trayMenu.Items.Add("禁用/启用以太网", null, (_, _) => ToggleAdapter());
-            _trayMenu.Items.Add("-");
-            _trayMenu.Items.Add("退出", null, (_, _) =>
+            _trayMenu.Items.Add("🏠 打开主面板",      null, (_, _) => ShowForm());
+            _trayMenu.Items.Add("🚀 立即登录",        null, async (_, _) => await DoLoginAsync());
+            _trayMenu.Items.Add("⛔ 断开校园网",      null, async (_, _) => await DoLogoutAsync());
+            _trayMenu.Items.Add(new ToolStripSeparator());
+            _trayMenu.Items.Add("🔌 禁用/启用以太网", null, (_, _) => ToggleAdapter());
+            _trayMenu.Items.Add(new ToolStripSeparator());
+            _trayMenu.Items.Add("❌ 退出", null, (_, _) =>
             {
                 _trayIcon.Visible = false;
                 _monitor.Dispose();
                 Application.Exit();
             });
 
+            // 美化右键菜单
+            _trayMenu.Font = new Font("Microsoft YaHei UI", 9.5f);
+            _trayMenu.ShowImageMargin = false;
+            _trayMenu.BackColor = Color.White;
+            _trayMenu.Renderer = new ToolStripProfessionalRenderer(new ModernColorTable());
+
             _trayIcon = new NotifyIcon
             {
                 Text             = "CUMT校园网助手",
-                Icon             = SystemIcons.Application,
+                Icon             = CreateTrayIcon(),
                 ContextMenuStrip = _trayMenu,
                 Visible          = true
             };
             _trayIcon.DoubleClick += (_, _) => ShowForm();
+        }
+
+        private Icon CreateTrayIcon()
+        {
+            var bmp = new Bitmap(64, 64);
+            using var g = Graphics.FromImage(bmp);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            
+            // 绘制圆形图标底色
+            using var brush = new SolidBrush(Primary);
+            g.FillEllipse(brush, 2, 2, 60, 60);
+            
+            // 绘制文字
+            using var font = new Font("Microsoft YaHei", 32f, FontStyle.Bold);
+            TextRenderer.DrawText(g, "C", font, new Rectangle(0, 0, 64, 64), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            
+            return Icon.FromHandle(bmp.GetHicon());
+        }
+
+        private class ModernColorTable : ProfessionalColorTable
+        {
+            public override Color MenuItemSelected => Color.FromArgb(243, 244, 246);
+            public override Color MenuItemBorder => Color.Transparent;
+            public override Color MenuBorder => Color.FromArgb(209, 213, 219);
+            public override Color ToolStripDropDownBackground => Color.White;
+            public override Color ImageMarginGradientBegin => Color.White;
+            public override Color ImageMarginGradientMiddle => Color.White;
+            public override Color ImageMarginGradientEnd => Color.White;
+            public override Color SeparatorDark => Color.FromArgb(229, 231, 235);
+            public override Color SeparatorLight => Color.White;
         }
 
         private void ShowForm()
