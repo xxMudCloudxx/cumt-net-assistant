@@ -36,6 +36,7 @@ namespace CampusNetAssistant
         private Button    _btnToggle     = null!;
         private Button    _btnRefresh    = null!;
         private Button    _btnCheckUpdate = null!;
+        private Button    _btnAbout      = null!;
         private Label     _lblStatus     = null!;
 
         // ══════════════ 业务 ══════════════
@@ -76,8 +77,10 @@ namespace CampusNetAssistant
                 if (!args.IsUpdateAvailable && _isManualUpdateCheck)
                 {
                     // 只在手动检查时显示"已是最新版本"提示
+                    var versionMatch = Regex.Match(args.InstalledVersion.ToString(), "\\d+(?:\\.\\d+){1,3}");
+                    var displayVersion = versionMatch.Success ? versionMatch.Value : args.InstalledVersion.ToString();
                     MessageBox.Show(
-                        $"当前已是最新版本 v{args.InstalledVersion}",
+                        $"当前已是最新版本 v{displayVersion}",
                         "检查更新",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information
@@ -558,12 +561,28 @@ namespace CampusNetAssistant
             {
                 Text      = "就绪",
                 Location  = new Point(20, y),
-                Size      = new Size(380, 22),
+                Size      = new Size(340, 22),
                 ForeColor = TextMuted,
                 Font      = new Font("Microsoft YaHei UI", 9f),
                 TextAlign = ContentAlignment.MiddleLeft,
             };
             body.Controls.Add(_lblStatus);
+
+            // ── 关于按钮 ──
+            _btnAbout = new Button
+            {
+                Text      = "?",
+                Location  = new Point(370, y - 2),
+                Size      = new Size(30, 26),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(229, 231, 235),
+                ForeColor = TextDark,
+                Font      = new Font("Microsoft YaHei UI", 11f, FontStyle.Bold),
+                Cursor    = Cursors.Hand,
+            };
+            _btnAbout.FlatAppearance.BorderSize = 0;
+            _btnAbout.Click += (_, _) => ShowAboutDialog();
+            body.Controls.Add(_btnAbout);
         }
 
         private void SetStatus(string text, Color color)
@@ -571,6 +590,146 @@ namespace CampusNetAssistant
             if (InvokeRequired) { Invoke(() => SetStatus(text, color)); return; }
             _lblStatus.Text      = text;
             _lblStatus.ForeColor = color;
+        }
+
+        private void ShowAboutDialog()
+        {
+            var aboutForm = new Form
+            {
+                Text            = "关于",
+                Size            = new Size(400, 320),
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox     = false,
+                MinimizeBox     = false,
+                StartPosition   = FormStartPosition.CenterParent,
+                BackColor       = Color.White,
+                Font            = new Font("Microsoft YaHei UI", 9.5f)
+            };
+
+            int y = 20;
+
+            // 标题
+            var lblTitle = new Label
+            {
+                Text      = "CUMT校园网助手",
+                Location  = new Point(0, y),
+                Size      = new Size(400, 30),
+                Font      = new Font("Microsoft YaHei UI", 14f, FontStyle.Bold),
+                ForeColor = Primary,
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            aboutForm.Controls.Add(lblTitle);
+            y += 40;
+
+            // 版本（只显示数字部分）
+            var versionMatch = Regex.Match(Application.ProductVersion, "\\d+(?:\\.\\d+){1,3}");
+            var displayVersion = versionMatch.Success ? versionMatch.Value : Application.ProductVersion;
+            var lblVersion = new Label
+            {
+                Text      = $"版本 {displayVersion}",
+                Location  = new Point(0, y),
+                Size      = new Size(400, 20),
+                ForeColor = TextMuted,
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            aboutForm.Controls.Add(lblVersion);
+            y += 35;
+
+            // 作者信息
+            AddInfoRow(aboutForm, "作者", "谷粒多 (xxMudCloudxx)", ref y);
+            AddInfoRow(aboutForm, "QQ", "2597453011", ref y);
+            
+            // GitHub 链接 (可点击)
+            var lblGithubLabel = new Label
+            {
+                Text      = "GitHub",
+                Location  = new Point(60, y),
+                Size      = new Size(80, 20),
+                ForeColor = TextDark,
+                Font      = new Font("Microsoft YaHei UI", 9.5f, FontStyle.Bold)
+            };
+            aboutForm.Controls.Add(lblGithubLabel);
+
+            var lblGithub = new LinkLabel
+            {
+                Text          = "github.com/xxMudCloudxx/cumt-campus-ant",
+                Location      = new Point(145, y),
+                Size          = new Size(200, 20),
+                LinkColor     = Primary,
+                ActiveLinkColor = PrimaryDark,
+                VisitedLinkColor = Primary,
+                Font          = new Font("Microsoft YaHei UI", 9f),
+                LinkBehavior  = LinkBehavior.HoverUnderline
+            };
+            lblGithub.LinkClicked += (s, e) =>
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "https://github.com/xxMudCloudxx/cumt-campus-ant",
+                        UseShellExecute = true
+                    });
+                }
+                catch { }
+            };
+            aboutForm.Controls.Add(lblGithub);
+            y += 35;
+
+            // 版权信息
+            var lblCopyright = new Label
+            {
+                Text      = "Copyright © 2026 谷粒多",
+                Location  = new Point(0, y),
+                Size      = new Size(400, 20),
+                ForeColor = TextMuted,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font      = new Font("Microsoft YaHei UI", 8.5f)
+            };
+            aboutForm.Controls.Add(lblCopyright);
+            y += 30;
+
+            // 关闭按钮
+            var btnClose = new Button
+            {
+                Text      = "确定",
+                Location  = new Point(150, y),
+                Size      = new Size(100, 32),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Primary,
+                ForeColor = Color.White,
+                Font      = new Font("Microsoft YaHei UI", 10f, FontStyle.Bold),
+                Cursor    = Cursors.Hand
+            };
+            btnClose.FlatAppearance.BorderSize = 0;
+            btnClose.Click += (s, e) => aboutForm.Close();
+            aboutForm.Controls.Add(btnClose);
+
+            aboutForm.ShowDialog(this);
+        }
+
+        private void AddInfoRow(Form form, string label, string value, ref int y)
+        {
+            var lblLabel = new Label
+            {
+                Text      = label,
+                Location  = new Point(60, y),
+                Size      = new Size(80, 20),
+                ForeColor = TextDark,
+                Font      = new Font("Microsoft YaHei UI", 9.5f, FontStyle.Bold)
+            };
+            form.Controls.Add(lblLabel);
+
+            var lblValue = new Label
+            {
+                Text      = value,
+                Location  = new Point(145, y),
+                Size      = new Size(200, 20),
+                ForeColor = TextMuted
+            };
+            form.Controls.Add(lblValue);
+
+            y += 25;
         }
 
         // ══════════════ UI 辅助方法 ══════════════
