@@ -2,6 +2,7 @@ using System.Drawing.Drawing2D;
 using System.IO;
 using System.Text;
 using Svg;
+using AutoUpdaterDotNET;
 
 namespace CampusNetAssistant
 {
@@ -60,6 +61,18 @@ namespace CampusNetAssistant
                 _ = DoLoginAsync(silent: false);
                 _monitor.Start();
             }
+
+            // ── 自动检查更新 ──
+            CheckForUpdates();
+        }
+
+        private void CheckForUpdates()
+        {
+            AutoUpdater.InstalledVersion = new Version(Application.ProductVersion);
+            AutoUpdater.ShowSkipButton = true;
+            AutoUpdater.ShowRemindLaterButton = true;
+            AutoUpdater.RunUpdateAsAdmin = false;
+            AutoUpdater.Start("https://github.com/xxMudCloudxx/cumt-campus-ant/releases/latest/download/update.xml");
         }
 
         // ── 启动时隐藏窗体，直接进托盘 ──
