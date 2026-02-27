@@ -27,11 +27,12 @@ namespace CampusNetAssistant
     /// <summary>配置管理器：JSON 持久化 + DPAPI 密码加密 + 注册表自启</summary>
     public static class ConfigManager
     {
-        private static readonly string ConfigDir  = AppDomain.CurrentDomain.BaseDirectory;
-        private static readonly string ConfigPath = Path.Combine(ConfigDir, "config.json");
-
         private const string AppName = "CampusNetAssistant";
         private const string RegKey  = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
+
+        // 将配置保存到 C:\Users\<User>\AppData\Local\CampusNetAssistant 目录下
+        private static readonly string ConfigDir  = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppName);
+        private static readonly string ConfigPath = Path.Combine(ConfigDir, "config.json");
 
         // ────────────────── 配置读写 ──────────────────
 
@@ -39,6 +40,18 @@ namespace CampusNetAssistant
         {
             try
             {
+                // 自动迁移：如果 AppData 中没有配置，但老的 exe 所在目录下有配置，则自动迁移过来
+                string oldConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
+                if (!File.Exists(ConfigPath) && File.Exists(oldConfigPath))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(ConfigDir);
+                        File.Copy(oldConfigPath, ConfigPath, true);
+                    }
+                    catch { /* 迁移失败的话直接忽略，当作全新启动 */ }
+                }
+
                 if (File.Exists(ConfigPath))
                 {
                     string json = File.ReadAllText(ConfigPath);
@@ -51,8 +64,15 @@ namespace CampusNetAssistant
 
         public static void Save(AppConfig config)
         {
-            string json = JsonSerializer.Serialize(config, AppConfigJsonContext.Default.AppConfig);
-            File.WriteAllText(ConfigPath, json);
+            try
+            {
+                if (!Directory.Exists(ConfigDir))
+                    Directory.CreateDirectory(ConfigDir);
+
+                string json = JsonSerializer.Serialize(config, AppConfigJsonContext.Default.AppConfig);
+                File.WriteAllText(ConfigPath, json);
+            }
+            catch { /* 保存失败时静默忽略 */ }
         }
 
         // ────────────────── DPAPI 密码加解密 ──────────────────
