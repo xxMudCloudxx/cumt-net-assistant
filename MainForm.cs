@@ -65,7 +65,11 @@ namespace CampusNetAssistant
 
         private void CheckForUpdates()
         {
-            AutoUpdater.InstalledVersion = new Version(Application.ProductVersion);
+            // Application.ProductVersion 可能含 git hash（如 "1.0.3+abc123"），需截断
+            var rawVersion = Application.ProductVersion;
+            var plusIndex = rawVersion.IndexOf('+');
+            var cleanVersion = plusIndex >= 0 ? rawVersion[..plusIndex] : rawVersion;
+            AutoUpdater.InstalledVersion = new Version(cleanVersion);
             AutoUpdater.ShowSkipButton = true;
             AutoUpdater.ShowRemindLaterButton = true;
             AutoUpdater.RunUpdateAsAdmin = false;
