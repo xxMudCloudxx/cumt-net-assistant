@@ -95,13 +95,27 @@ namespace CampusNetAssistant
                 var friendlyMsg = "";
                 
                 // 针对常见错误提供友好提示
-                if (errorMsg.Contains("non-existing field") || errorMsg.Contains("字段"))
+                var innerMsg = args.Error.InnerException?.Message ?? "";
+                if (errorMsg.Contains("SSL") || errorMsg.Contains("TLS") || 
+                    innerMsg.Contains("SSL") || innerMsg.Contains("TLS") ||
+                    errorMsg.Contains("established") || innerMsg.Contains("established"))
                 {
-                    friendlyMsg = "更新服务器配置异常。\n\n" +
-                                 "这可能是因为当前版本尚未发布到 GitHub，或网络连接问题。\n\n" +
+                    friendlyMsg = "无法与更新服务器建立安全连接（SSL/TLS 失败）。\n\n" +
+                                 "这通常是因为网络环境限制了 HTTPS 访问。\n" +
+                                 "请检查网络连接或代理设置。\n\n" +
                                  "是否访问 GitHub Releases 页面手动检查更新？";
                 }
-                else if (errorMsg.Contains("远程名称无法解析") || errorMsg.Contains("network") || errorMsg.Contains("连接"))
+                else if (errorMsg.Contains("non-existing field") || errorMsg.Contains("字段") || 
+                         errorMsg.Contains("MissingField"))
+                {
+                    friendlyMsg = "更新服务器返回了非预期内容（可能是网络拦截导致）。\n\n" +
+                                 "这可能是因为：\n" +
+                                 "1. 校园网未登录（网页认证拦截）\n" +
+                                 "2. 使用了 Watt Toolkit (Steam++) 或其他代理软件\n\n" +
+                                 "是否访问 GitHub Releases 页面手动检查更新？";
+                }
+                else if (errorMsg.Contains("远程名称无法解析") || errorMsg.Contains("network") || 
+                         errorMsg.Contains("连接") || errorMsg.Contains("timed out"))
                 {
                     friendlyMsg = "网络连接失败，无法访问更新服务器。\n\n是否访问 GitHub Releases 页面手动检查更新？";
                 }
@@ -157,7 +171,8 @@ namespace CampusNetAssistant
             // 添加错误处理，避免因网络或服务器问题导致程序异常
             try
             {
-                AutoUpdater.Start("https://github.com/xxMudCloudxx/cumt-campus-ant/releases/latest/download/update.xml");
+                // 使用 jsDelivr CDN 加速，避免直连 GitHub 被 GFW/SNI 阻断
+                AutoUpdater.Start("https://cdn.jsdelivr.net/gh/xxMudCloudxx/cumt-campus-ant@main/update.xml");
             }
             catch (Exception ex)
             {

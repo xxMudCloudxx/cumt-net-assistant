@@ -36,7 +36,7 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ steps.version.outputs.VERSION }}"
-          $xml = @"
+          @"
           <?xml version="1.0" encoding="UTF-8"?>
           <item>
             <version>$version</version>
@@ -45,8 +45,7 @@ jobs:
             <mandatory>false</mandatory>
             <args></args>
           </item>
-          "@
-          $xml | Out-File -Encoding utf8 update.xml
+          "@ | Out-File -Encoding utf8NoBOM update.xml
 
       - name: Release
         uses: softprops/action-gh-release@v2
@@ -54,5 +53,22 @@ jobs:
           files: |
             CampusNetAssistant.zip
             update.xml
+        env:
+          GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
+
+      - name: Update update.xml in repo for CDN
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          Copy-Item update.xml update.xml -Force
+          git add update.xml
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "chore: update update.xml for ${{ github.ref_name }}"
+            git push origin main
+          }
         env:
           GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
