@@ -175,13 +175,16 @@ namespace CampusNetAssistant
         {
             _isManualUpdateCheck = true;
             
-            // 检查是否是本地测试/开发版本
+            // 检查是否是本地测试/开发版本（只警告预发布版本，不警告构建元数据）
             var rawVersion = Application.ProductVersion;
-            if (rawVersion.Contains("-") || rawVersion.Contains("+"))
+            
+            // 只对带 - 前缀的预发布版本（如 1.0.6-beta）发出警告
+            // + 后缀是构建元数据（如 1.0.6+commit_hash），提取后是合法的正式版本，不需要警告
+            if (rawVersion.Contains("-"))
             {
                 var result = MessageBox.Show(
-                    $"当前版本 ({rawVersion}) 是开发/测试版本。\n\n" +
-                    "更新检查可能会失败，因为该版本尚未发布到 GitHub。\n\n" +
+                    $"当前版本 ({rawVersion}) 是预发布/测试版本。\n\n" +
+                    "更新检查可能会失败，因为该版本尚未正式发布到 GitHub。\n\n" +
                     "是否仍要继续检查更新？",
                     "检查更新",
                     MessageBoxButtons.YesNo,
