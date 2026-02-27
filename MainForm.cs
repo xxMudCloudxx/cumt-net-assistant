@@ -122,11 +122,21 @@ namespace CampusNetAssistant
                 // 只在手动检查时显示错误提示
                 var errorMsg = args.Error.Message;
                 var innerMsg = args.Error.InnerException?.Message ?? "";
+                
+                // 如果是 FileNotFoundException，提取缺失的文件名
+                string fileInfo = "";
+                if (args.Error is System.IO.FileNotFoundException fnf)
+                    fileInfo = $"\n缺失文件: {fnf.FileName ?? "(null)"}";
+                if (args.Error.InnerException is System.IO.FileNotFoundException fnf2)
+                    fileInfo += $"\n内部缺失文件: {fnf2.FileName ?? "(null)"}";
+
                 var fullError = $"异常类型: {args.Error.GetType().Name}\n" +
                                $"消息: {errorMsg}\n" +
+                               fileInfo +
                                (args.Error.InnerException != null 
-                                   ? $"内部异常: {args.Error.InnerException.GetType().Name}: {innerMsg}\n" 
-                                   : "");
+                                   ? $"\n内部异常: {args.Error.InnerException.GetType().Name}: {innerMsg}\n" 
+                                   : "") +
+                               $"\n--- 堆栈 ---\n{args.Error.StackTrace}";
                 
                 // 尝试单独下载 update.xml 看看实际返回了什么
                 string diagContent = "";

@@ -17,11 +17,31 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/xxMudCloudxx/cumt-campus-ant</PackageProjectUrl>
     <Description>CUMT校园网助手 - 轻量级校园网自动登录工具</Description>
+    <!--
+      保持 full trimming 以减小包体积，但精准保留 AutoUpdater.NET 及其依赖的
+      XML 序列化、资源管理相关程序集，避免运行时反射/资源加载失败。
+    -->
+    <CustomResourceTypesSupport>true</CustomResourceTypesSupport>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Autoupdater.NET.Official" Version="1.9.2" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.4" />
+  </ItemGroup>
+
+  <!-- 精准保留：AutoUpdater.NET + 它依赖的 XML/资源/绘图 核心组件 -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="AutoUpdater.NET" />
+    <TrimmerRootAssembly Include="System.Private.Xml" />
+    <TrimmerRootAssembly Include="System.Private.Xml.Linq" />
+    <TrimmerRootAssembly Include="System.Xml.XmlSerializer" />
+    <TrimmerRootAssembly Include="System.Resources.Extensions" />
+    <TrimmerRootAssembly Include="System.Drawing.Common" />
+    <TrimmerRootAssembly Include="System.Drawing" />
+    <TrimmerRootAssembly Include="System.Drawing.Primitives" />
+    <TrimmerRootAssembly Include="System.ComponentModel" />
+    <TrimmerRootAssembly Include="System.ComponentModel.TypeConverter" />
+    <TrimmerRootAssembly Include="System.Windows.Forms" />
   </ItemGroup>
 
 </Project>

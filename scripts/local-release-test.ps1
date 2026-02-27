@@ -25,7 +25,9 @@ try {
     dotnet publish -c Release -r $Runtime --self-contained true `
         -p:PublishSingleFile=true `
         -p:IncludeNativeLibrariesForSelfExtract=true `
+        -p:PublishTrimmed=true `
         -p:EnableCompressionInSingleFile=true `
+        -p:_SuppressWinFormsTrimError=true `
         -p:Version=$Version `
         -p:DebugType=embedded `
         -o $publishDir
