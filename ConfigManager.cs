@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Win32;
 
 namespace CampusNetAssistant
@@ -14,6 +15,12 @@ namespace CampusNetAssistant
         public string SelectedAdapter   { get; set; } = "";
         public bool   AutoStart         { get; set; } = false;
         public bool   AutoLogin         { get; set; } = false;
+    }
+
+    [JsonSourceGenerationOptions(WriteIndented = true)]
+    [JsonSerializable(typeof(AppConfig))]
+    internal partial class AppConfigJsonContext : JsonSerializerContext
+    {
     }
 
     /// <summary>配置管理器：JSON 持久化 + DPAPI 密码加密 + 注册表自启</summary>
@@ -34,7 +41,7 @@ namespace CampusNetAssistant
                 if (File.Exists(ConfigPath))
                 {
                     string json = File.ReadAllText(ConfigPath);
-                    return JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
+                    return JsonSerializer.Deserialize(json, AppConfigJsonContext.Default.AppConfig) ?? new AppConfig();
                 }
             }
             catch { /* 配置文件损坏则返回默认 */ }
@@ -43,7 +50,7 @@ namespace CampusNetAssistant
 
         public static void Save(AppConfig config)
         {
-            string json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+            string json = JsonSerializer.Serialize(config, AppConfigJsonContext.Default.AppConfig);
             File.WriteAllText(ConfigPath, json);
         }
 
