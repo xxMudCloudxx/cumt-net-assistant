@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using System.Text.RegularExpressions;
 using AutoUpdaterDotNET;
 
 namespace CampusNetAssistant
@@ -65,11 +66,20 @@ namespace CampusNetAssistant
 
         private void CheckForUpdates()
         {
-            // Application.ProductVersion 可能含 git hash（如 "1.0.3+abc123"），需截断
+            // 兼容语义化版本后缀（如 1.0.4-local / 1.0.4+gitsha），提取纯数字版本部分
             var rawVersion = Application.ProductVersion;
-            var plusIndex = rawVersion.IndexOf('+');
-            var cleanVersion = plusIndex >= 0 ? rawVersion[..plusIndex] : rawVersion;
-            AutoUpdater.InstalledVersion = new Version(cleanVersion);
+            Version? installedVersion;
+
+            if (!Version.TryParse(rawVersion, out installedVersion))
+            {
+                var match = Regex.Match(rawVersion, @"\d+(?:\.\d+){1,3}");
+                if (!match.Success || !Version.TryParse(match.Value, out installedVersion))
+                {
+                    installedVersion = new Version(1, 0, 0, 0);
+                }
+            }
+
+            AutoUpdater.InstalledVersion = installedVersion ?? new Version(1, 0, 0, 0);
             AutoUpdater.ShowSkipButton = true;
             AutoUpdater.ShowRemindLaterButton = true;
             AutoUpdater.RunUpdateAsAdmin = false;

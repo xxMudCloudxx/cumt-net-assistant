@@ -6,6 +6,14 @@
 *.userosscache
 *.sln.docstates
 .vs/
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 *.swp
 *.log
+
+# local release test artifacts
+release_local/
+release_local_extracted/
+CampusNetAssistant.local.zip
+publish_test/
+publish_trimmed/

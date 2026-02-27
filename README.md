@@ -51,6 +51,24 @@ dotnet run
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o out
 ```
 
+## ✅ 本地 Release 预发布测试（推荐）
+
+为避免“发布后下载才发现崩溃”，可在本地运行一键预发布检查脚本：
+
+```powershell
+# 使用与 CI 一致的发布参数打包，并做两轮冒烟测试（发布目录 + zip 解压后）
+powershell -ExecutionPolicy Bypass -File .\scripts\local-release-test.ps1 -Version 1.0.4
+```
+
+脚本会自动完成：
+
+- Release 编译
+- 与 GitHub Actions 相同参数的 `dotnet publish`
+- 启动 `CampusNetAssistant.exe` 冒烟检查（是否启动即崩溃）
+- 打 zip 后再解压，并再次启动冒烟检查（模拟用户下载解压后的场景）
+
+通过后再打 tag 发布，可显著降低线上回滚概率。
+
 ## 📝 许可证
 
 MIT License
