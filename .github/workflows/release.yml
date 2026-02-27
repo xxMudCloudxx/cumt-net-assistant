@@ -29,10 +29,7 @@ jobs:
           echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
 
       - name: Publish app
-        run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=true -p:EnableCompressionInSingleFile=true -p:_SuppressWinFormsTrimError=true -p:Version=${{ steps.version.outputs.VERSION }} -o CampusNetAssistant
-
-      - name: Create Zip Archive
-        run: Compress-Archive -Path "CampusNetAssistant" -DestinationPath CampusNetAssistant.zip
+        run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:Version=${{ steps.version.outputs.VERSION }} -p:DebugType=embedded -o CampusNetAssistant
 
       - name: Generate update.xml
         shell: pwsh
@@ -42,7 +39,7 @@ jobs:
           <?xml version="1.0" encoding="UTF-8"?>
           <item>
             <version>$version</version>
-            <url>https://github.com/xxMudCloudxx/cumt-campus-ant/releases/latest/download/CampusNetAssistant.zip</url>
+            <url>https://github.com/xxMudCloudxx/cumt-campus-ant/releases/latest/download/CampusNetAssistant.exe</url>
             <changelog>https://github.com/xxMudCloudxx/cumt-campus-ant/releases/tag/${{ github.ref_name }}</changelog>
             <mandatory>false</mandatory>
             <args></args>
@@ -53,7 +50,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            CampusNetAssistant.zip
+            CampusNetAssistant\CampusNetAssistant.exe
             update.xml
         env:
           GITHUB_TOKEN: ${{ secrets.G_TOKEN }}

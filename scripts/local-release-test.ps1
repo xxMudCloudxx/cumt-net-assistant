@@ -25,10 +25,9 @@ try {
     dotnet publish -c Release -r $Runtime --self-contained true `
         -p:PublishSingleFile=true `
         -p:IncludeNativeLibrariesForSelfExtract=true `
-        -p:PublishTrimmed=true `
         -p:EnableCompressionInSingleFile=true `
-        -p:_SuppressWinFormsTrimError=true `
         -p:Version=$Version `
+        -p:DebugType=embedded `
         -o $publishDir
 
     $exePath = Join-Path $publishDir $exeName
@@ -47,27 +46,10 @@ try {
     }
     Stop-Process -Id $p1.Id -Force
 
-    Write-Host "==> [5/6] Zip and extract test"
-    Compress-Archive -Path "$publishDir\*" -DestinationPath $zipPath
-    Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
-
-    $extractedExe = Join-Path $extractDir $exeName
-    if (-not (Test-Path $extractedExe)) {
-        throw "Extracted EXE missing: $extractedExe"
-    }
-
-    Write-Host "==> [6/6] Smoke test extracted EXE"
-    $p2 = Start-Process -FilePath $extractedExe -PassThru
-    Start-Sleep -Seconds 8
-    if ($p2.HasExited) {
-        throw "Extracted EXE exited unexpectedly within 8 seconds (possible startup crash after zip extraction)."
-    }
-    Stop-Process -Id $p2.Id -Force
-
     Write-Host ""
     Write-Host "✅ Local release test passed."
     Write-Host "Output dir : $publishDir"
-    Write-Host "Zip file   : $zipPath"
+    Write-Host "Output exe : $exePath"
 }
 finally {
     Pop-Location
