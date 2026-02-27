@@ -60,15 +60,21 @@ namespace CampusNetAssistant
             // ── 更新检查事件绑定 ──
             AutoUpdater.CheckForUpdateEvent += OnUpdateCheckComplete;
 
+            // ── 自动启动 ──
             if (_config.AutoLogin && !string.IsNullOrEmpty(_config.StudentId))
             {
                 _ = DoLoginAsync(silent: false);
                 _monitor.Start();
             }
 
-            // 不在启动时自动检查更新，避免网络超时导致 AutoUpdater.Running 卡住
-            // 用户可通过按钮或托盘菜单手动检查
-            // CheckForUpdates();
+            // ── 异步自动检查更新 ──
+            // 放到后台任务执行，防止网络卡顿时导致程序启动慢或 UI 假死
+            _ = Task.Run(() => 
+            {
+                // 等待几秒钟让程序先完全启动
+                Thread.Sleep(3000);
+                Invoke(() => CheckForUpdates());
+            });
         }
 
         private void OnUpdateCheckComplete(UpdateInfoEventArgs args)
@@ -89,8 +95,26 @@ namespace CampusNetAssistant
                 }
                 else if (args.IsUpdateAvailable)
                 {
-                    // 订阅了 CheckForUpdateEvent 后，AutoUpdater 不会自动弹窗，需要手动显示
-                    AutoUpdater.ShowUpdateForm(args);
+                    // 如果是自动检查，并且这个新版本是用户已经忽略过的版本，就直接静默跳过
+                    if (!_isManualUpdateCheck && !string.IsNullOrEmpty(args.CurrentVersion) && _config.IgnoredVersion == args.CurrentVersion)
+                    {
+                        return;
+                    }
+
+                    // 使用自定义更新对话框
+                    using var dlg = new UpdateDialog(args);
+                    var dialogResult = dlg.ShowDialog(this);
+                    if (dialogResult == DialogResult.OK)
+                    {
+                        // 用户点击了「立即更新」，触发下载
+                        AutoUpdater.DownloadUpdate(args);
+                    }
+                    else if (dialogResult == DialogResult.Ignore)
+                    {
+                        // 用户点击了「忽略此版本」，记录版本号以后不再提示
+                        _config.IgnoredVersion = args.CurrentVersion;
+                        ConfigManager.Save(_config);
+                    }
                 }
             }
             else if (_isManualUpdateCheck)
@@ -847,7 +871,7 @@ namespace CampusNetAssistant
                 e.Graphics.DrawPath(pen, path);
             };
 
-            var cbo = new ComboBox
+            var cbo = new CustomComboBox
             {
                 Location      = new Point(4, 4),
                 Size          = new Size(w - 8, 28),
@@ -893,8 +917,10 @@ namespace CampusNetAssistant
                 Cursor    = Cursors.Hand,
             };
             btn.FlatAppearance.BorderSize = 0;
+            btn.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255); // 防黑框
             btn.FlatAppearance.MouseDownBackColor = Color.Transparent;
             btn.FlatAppearance.MouseOverBackColor = Color.Transparent;
+            btn.TabStop = false; // 取消焦点黑框
             
             bool isHovered = false;
             btn.MouseEnter += (s, e) => { isHovered = true; btn.Invalidate(); };
@@ -928,8 +954,10 @@ namespace CampusNetAssistant
                 Cursor    = Cursors.Hand,
             };
             btn.FlatAppearance.BorderSize = 0;
+            btn.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
             btn.FlatAppearance.MouseDownBackColor = Color.Transparent;
             btn.FlatAppearance.MouseOverBackColor = Color.Transparent;
+            btn.TabStop = false;
 
             Color bgHover = Color.FromArgb(241, 245, 249); // Slate 100
             bool isHovered = false;
@@ -973,8 +1001,10 @@ namespace CampusNetAssistant
                 Cursor    = Cursors.Hand,
             };
             btn.FlatAppearance.BorderSize = 0;
+            btn.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255);
             btn.FlatAppearance.MouseDownBackColor = Color.Transparent;
             btn.FlatAppearance.MouseOverBackColor = Color.Transparent;
+            btn.TabStop = false;
             
             Color bg = Color.White;
             Color bgHover = Color.FromArgb(248, 250, 252);
@@ -1023,6 +1053,46 @@ namespace CampusNetAssistant
             path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
             path.CloseFigure();
             return path;
+        }
+
+        // 屏蔽 ComboBox 的双击全选文本行为和系统默认的蓝色高亮
+        private class CustomComboBox : ComboBox
+        {
+            public CustomComboBox()
+            {
+                DrawMode = DrawMode.OwnerDrawFixed;
+            }
+
+            protected override void OnDrawItem(DrawItemEventArgs e)
+            {
+                if (e.Index < 0) return;
+
+                // 判断当前是在画下拉框的主体，还是在画展开的菜单列表
+                bool isEdit = (e.State & DrawItemState.ComboBoxEdit) == DrawItemState.ComboBoxEdit;
+                bool isSelected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
+
+                // 主体固定用背景色，不管是否选中或聚焦。展开列表时，选中项给一个浅灰高亮
+                Color bg = BackColor;
+                if (!isEdit && isSelected)
+                {
+                    bg = Color.FromArgb(241, 245, 249); // Slate 100
+                }
+
+                e.Graphics.FillRectangle(new SolidBrush(bg), e.Bounds);
+
+                string text = Items[e.Index].ToString() ?? "";
+                TextRenderer.DrawText(e.Graphics, text, Font, e.Bounds, ForeColor,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+            }
+
+            protected override void WndProc(ref Message m)
+            {
+                // 拦截 WM_LBUTTONDBLCLK (0x0203) 消息，防止双击触发原生全选
+                if (m.Msg == 0x0203)
+                    return;
+
+                base.WndProc(ref m);
+            }
         }
     }
 }

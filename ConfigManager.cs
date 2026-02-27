@@ -15,6 +15,7 @@ namespace CampusNetAssistant
         public string SelectedAdapter   { get; set; } = "";
         public bool   AutoStart         { get; set; } = false;
         public bool   AutoLogin         { get; set; } = false;
+        public string IgnoredVersion    { get; set; } = "";
     }
 
     [JsonSourceGenerationOptions(WriteIndented = true)]
