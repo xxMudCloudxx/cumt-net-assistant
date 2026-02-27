@@ -76,3 +76,10 @@ jobs:
           }
         env:
           GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
+
+      - name: Purge jsDelivr CDN cache
+        shell: pwsh
+        run: |
+          Write-Host "Purging jsDelivr cache for update.xml..."
+          $response = Invoke-RestMethod -Uri "https://purge.jsdelivr.net/gh/xxMudCloudxx/cumt-campus-ant@main/update.xml" -Method Get
+          Write-Host "Purge result: $($response | ConvertTo-Json -Depth 3)"

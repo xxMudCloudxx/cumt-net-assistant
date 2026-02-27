@@ -66,8 +66,9 @@ namespace CampusNetAssistant
                 _monitor.Start();
             }
 
-            // ── 自动检查更新 ──
-            CheckForUpdates();
+            // 不在启动时自动检查更新，避免网络超时导致 AutoUpdater.Running 卡住
+            // 用户可通过按钮或托盘菜单手动检查
+            // CheckForUpdates();
         }
 
         private void OnUpdateCheckComplete(UpdateInfoEventArgs args)
@@ -86,47 +87,46 @@ namespace CampusNetAssistant
                         MessageBoxIcon.Information
                     );
                 }
-                // 有新版本时由AutoUpdater自动显示对话框
+                else if (args.IsUpdateAvailable)
+                {
+                    // 订阅了 CheckForUpdateEvent 后，AutoUpdater 不会自动弹窗，需要手动显示
+                    AutoUpdater.ShowUpdateForm(args);
+                }
             }
             else if (_isManualUpdateCheck)
             {
                 // 只在手动检查时显示错误提示
                 var errorMsg = args.Error.Message;
-                var friendlyMsg = "";
-                
-                // 针对常见错误提供友好提示
                 var innerMsg = args.Error.InnerException?.Message ?? "";
-                if (errorMsg.Contains("SSL") || errorMsg.Contains("TLS") || 
-                    innerMsg.Contains("SSL") || innerMsg.Contains("TLS") ||
-                    errorMsg.Contains("established") || innerMsg.Contains("established"))
-                {
-                    friendlyMsg = "无法与更新服务器建立安全连接（SSL/TLS 失败）。\n\n" +
-                                 "这通常是因为网络环境限制了 HTTPS 访问。\n" +
-                                 "请检查网络连接或代理设置。\n\n" +
-                                 "是否访问 GitHub Releases 页面手动检查更新？";
-                }
-                else if (errorMsg.Contains("non-existing field") || errorMsg.Contains("字段") || 
-                         errorMsg.Contains("MissingField"))
-                {
-                    friendlyMsg = "更新服务器返回了非预期内容（可能是网络拦截导致）。\n\n" +
-                                 "这可能是因为：\n" +
-                                 "1. 校园网未登录（网页认证拦截）\n" +
-                                 "2. 使用了 Watt Toolkit (Steam++) 或其他代理软件\n\n" +
-                                 "是否访问 GitHub Releases 页面手动检查更新？";
-                }
-                else if (errorMsg.Contains("远程名称无法解析") || errorMsg.Contains("network") || 
-                         errorMsg.Contains("连接") || errorMsg.Contains("timed out"))
-                {
-                    friendlyMsg = "网络连接失败，无法访问更新服务器。\n\n是否访问 GitHub Releases 页面手动检查更新？";
-                }
-                else
-                {
-                    friendlyMsg = $"检查更新失败：{errorMsg}\n\n是否访问 GitHub Releases 页面手动检查更新？";
-                }
+                var fullError = $"异常类型: {args.Error.GetType().Name}\n" +
+                               $"消息: {errorMsg}\n" +
+                               (args.Error.InnerException != null 
+                                   ? $"内部异常: {args.Error.InnerException.GetType().Name}: {innerMsg}\n" 
+                                   : "");
                 
+                // 尝试单独下载 update.xml 看看实际返回了什么
+                string diagContent = "";
+                try
+                {
+                    using var http = new HttpClient();
+                    http.Timeout = TimeSpan.FromSeconds(10);
+                    var updateUrl = "https://cdn.jsdelivr.net/gh/xxMudCloudxx/cumt-campus-ant@main/update.xml";
+                    var content = http.GetStringAsync(updateUrl).Result;
+                    diagContent = $"\n--- 诊断下载结果 ---\n" +
+                                  $"URL: {updateUrl}\n" +
+                                  $"长度: {content.Length} 字符\n" +
+                                  $"前200字符:\n{content.Substring(0, Math.Min(200, content.Length))}";
+                }
+                catch (Exception diagEx)
+                {
+                    diagContent = $"\n--- 诊断下载也失败 ---\n{diagEx.GetType().Name}: {diagEx.Message}";
+                    if (diagEx.InnerException != null)
+                        diagContent += $"\n内部: {diagEx.InnerException.GetType().Name}: {diagEx.InnerException.Message}";
+                }
+
                 var result = MessageBox.Show(
-                    friendlyMsg,
-                    "检查更新",
+                    $"检查更新失败\n\n{fullError}{diagContent}\n\n是否访问 GitHub Releases 页面手动检查更新？",
+                    "检查更新 - 诊断信息",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Warning
                 );
@@ -167,12 +167,16 @@ namespace CampusNetAssistant
             AutoUpdater.ShowSkipButton = true;
             AutoUpdater.ShowRemindLaterButton = true;
             AutoUpdater.RunUpdateAsAdmin = false;
+            AutoUpdater.Synchronous = true;
+            AutoUpdater.HttpUserAgent = "CampusNetAssistant";
             
             // 添加错误处理，避免因网络或服务器问题导致程序异常
             try
             {
                 // 使用 jsDelivr CDN 加速，避免直连 GitHub 被 GFW/SNI 阻断
-                AutoUpdater.Start("https://cdn.jsdelivr.net/gh/xxMudCloudxx/cumt-campus-ant@main/update.xml");
+                var updateUrl = "https://cdn.jsdelivr.net/gh/xxMudCloudxx/cumt-campus-ant@main/update.xml";
+                System.Diagnostics.Debug.WriteLine($"[AutoUpdater] Starting update check: {updateUrl}, InstalledVersion={AutoUpdater.InstalledVersion}");
+                AutoUpdater.Start(updateUrl);
             }
             catch (Exception ex)
             {
