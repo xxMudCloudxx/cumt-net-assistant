@@ -39,7 +39,7 @@ jobs:
           <?xml version="1.0" encoding="UTF-8"?>
           <item>
             <version>$version</version>
-            <url>https://ghproxy.net/https://github.com/xxMudCloudxx/cumt-net-assistant/releases/latest/download/CumtLogin.exe</url>
+            <url>https://ghfast.top/https://github.com/xxMudCloudxx/cumt-net-assistant/releases/latest/download/CumtLogin.exe</url>
             <changelog>https://github.com/xxMudCloudxx/cumt-net-assistant/releases/tag/${{ github.ref_name }}</changelog>
             <mandatory>false</mandatory>
             <args></args>
