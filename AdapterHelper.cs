@@ -51,10 +51,12 @@ namespace CampusNetAssistant
                     CreateNoWindow  = true
                 };
 
-                var process = Process.Start(psi);
+                using var process = Process.Start(psi);
                 if (process == null) return false;
 
-                process.WaitForExit(5000);
+                if (!process.WaitForExit(5000))
+                    return false; // UAC 超时或用户未响应
+
                 return process.ExitCode == 0;
             }
             catch

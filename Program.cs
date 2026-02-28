@@ -8,7 +8,6 @@ namespace CampusNetAssistant
 {
     internal static class Program
     {
-        private static Mutex? _mutex;
 
         [DllImport("user32.dll", SetLastError = true)]
         static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -22,7 +21,7 @@ namespace CampusNetAssistant
         static void Main()
         {
             const string mutexName = "CampusNetAssistant_SingleInstance";
-            _mutex = new Mutex(true, mutexName, out bool createdNew);
+            using var mutex = new Mutex(true, mutexName, out bool createdNew);
 
             if (!createdNew)
             {

@@ -23,10 +23,13 @@ namespace CampusNetAssistant
     /// <summary>校园网 eportal 认证核心</summary>
     public static class LoginService
     {
-        private static readonly HttpClient Client = new()
+        private static readonly HttpClient _client = new()
         {
             Timeout = TimeSpan.FromSeconds(10)
         };
+
+        /// <summary>供其他模块复用的 HttpClient 实例</summary>
+        public static HttpClient SharedHttpClient => _client;
 
         private const string BaseUrl = "http://10.2.5.251:801/eportal/";
 
@@ -57,7 +60,7 @@ namespace CampusNetAssistant
                              $"&user_account={account}" +
                              $"&user_password={Uri.EscapeDataString(password)}";
 
-                string raw = await Client.GetStringAsync(url);
+                string raw = await _client.GetStringAsync(url);
 
                 // 服务器返回格式可能是 "(...)" 或 JSONP "cbXXX(...)"
                 // 统一用正则提取花括号里的 JSON 内容
@@ -117,7 +120,7 @@ namespace CampusNetAssistant
             try
             {
                 string url = $"{BaseUrl}?c=Portal&a=logout&login_method=1";
-                await Client.GetStringAsync(url);
+                await _client.GetStringAsync(url);
                 return new LoginResult { Success = true, Message = "已断开校园网连接" };
             }
             catch (Exception ex)

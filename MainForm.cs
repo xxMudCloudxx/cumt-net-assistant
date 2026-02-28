@@ -148,8 +148,7 @@ namespace CampusNetAssistant
                 string diagContent = "";
                 try
                 {
-                    using var http = new HttpClient();
-                    http.Timeout = TimeSpan.FromSeconds(10);
+                    var http = LoginService.SharedHttpClient;
                     var updateUrl = "https://cdn.jsdelivr.net/gh/xxMudCloudxx/cumt-net-assistant@main/update.xml";
                     var content = await http.GetStringAsync(updateUrl);
                     diagContent = $"\n--- 诊断下载结果 ---\n" +
