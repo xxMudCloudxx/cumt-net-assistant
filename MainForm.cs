@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using AutoUpdaterDotNET;
 
@@ -6,6 +7,9 @@ namespace CampusNetAssistant
 {
     public class MainForm : Form
     {
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern bool DestroyIcon(IntPtr handle);
+
         // ══════════════ 颜色主题 ══════════════
         private static readonly Color Primary       = Color.FromArgb(99, 102, 241);   // Indigo 500
         private static readonly Color PrimaryDark   = Color.FromArgb(79, 70, 229);    // Indigo 600
@@ -69,16 +73,18 @@ namespace CampusNetAssistant
 
             // ── 异步自动检查更新 ──
             // 放到后台任务执行，防止网络卡顿时导致程序启动慢或 UI 假死
-            _ = Task.Run(() => 
+            _ = Task.Run(async () => 
             {
                 // 等待几秒钟让程序先完全启动
-                Thread.Sleep(3000);
+                await Task.Delay(3000);
                 Invoke(() => CheckForUpdates());
             });
         }
 
-        private void OnUpdateCheckComplete(UpdateInfoEventArgs args)
+        private async void OnUpdateCheckComplete(UpdateInfoEventArgs args)
         {
+            try
+            {
             if (args.Error == null)
             {
                 if (!args.IsUpdateAvailable && _isManualUpdateCheck)
@@ -145,7 +151,7 @@ namespace CampusNetAssistant
                     using var http = new HttpClient();
                     http.Timeout = TimeSpan.FromSeconds(10);
                     var updateUrl = "https://cdn.jsdelivr.net/gh/xxMudCloudxx/cumt-net-assistant@main/update.xml";
-                    var content = http.GetStringAsync(updateUrl).Result;
+                    var content = await http.GetStringAsync(updateUrl);
                     diagContent = $"\n--- 诊断下载结果 ---\n" +
                                   $"URL: {updateUrl}\n" +
                                   $"长度: {content.Length} 字符\n" +
@@ -180,6 +186,11 @@ namespace CampusNetAssistant
             }
             
             _isManualUpdateCheck = false; // 重置标志
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[UpdateCheck] 未处理异常: {ex}");
+            }
         }
 
         private void CheckForUpdates()
@@ -281,9 +292,19 @@ namespace CampusNetAssistant
                 Hide();
                 return;
             }
-            _monitor.Dispose();
             _trayIcon.Visible = false;
             base.OnFormClosing(e);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _monitor.Dispose();
+                _trayIcon?.Dispose();
+                _trayMenu?.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         // ══════════════════════════════════════
@@ -302,7 +323,6 @@ namespace CampusNetAssistant
             _trayMenu.Items.Add("❌ 退出", null, (_, _) =>
             {
                 _trayIcon.Visible = false;
-                _monitor.Dispose();
                 Application.Exit();
             });
 
@@ -332,14 +352,14 @@ namespace CampusNetAssistant
             try
             {
                 // 优先使用 EXE 内嵌图标
-                var icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+                using var icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
                 if (icon != null)
                     return new Icon(icon, 64, 64);
             }
             catch { }
 
             // 回退：程序化绘制网络图标
-            var bmp = new Bitmap(64, 64);
+            using var bmp = new Bitmap(64, 64);
             using var g = Graphics.FromImage(bmp);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             using var brush = new SolidBrush(Primary);
@@ -347,7 +367,11 @@ namespace CampusNetAssistant
             using var font = new Font("Microsoft YaHei", 32f, FontStyle.Bold);
             TextRenderer.DrawText(g, "C", font, new Rectangle(0, 0, 64, 64), Color.White,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-            return Icon.FromHandle(bmp.GetHicon());
+            IntPtr hIcon = bmp.GetHicon();
+            using var tempIcon = Icon.FromHandle(hIcon);
+            var resultIcon = (Icon)tempIcon.Clone();
+            DestroyIcon(hIcon);
+            return resultIcon;
         }
 
         private class ModernColorTable : ProfessionalColorTable
@@ -404,28 +428,25 @@ namespace CampusNetAssistant
 
         private async Task AutoLoginAsync()
         {
-            await Task.Run(async () =>
-            {
-                var result = await LoginService.LoginAsync(
-                    _config.StudentId,
-                    ConfigManager.DecryptPassword(_config.EncryptedPassword),
-                    (OperatorType)_config.OperatorIndex);
+            var result = await LoginService.LoginAsync(
+                _config.StudentId,
+                ConfigManager.DecryptPassword(_config.EncryptedPassword),
+                (OperatorType)_config.OperatorIndex);
 
-                Invoke(() =>
+            Invoke(() =>
+            {
+                if (result.Success)
                 {
-                    if (result.Success)
-                    {
-                        SetStatus(result.Message, Success);
-                        _monitor.ResetFailures();
-                        ShowBalloon("自动登录成功", result.Message, ToolTipIcon.Info);
-                    }
-                    else
-                    {
-                        SetStatus(result.Message, Danger);
-                        _monitor.RecordFailure();
-                        ShowBalloon("自动登录失败", result.Message, ToolTipIcon.Warning);
-                    }
-                });
+                    SetStatus(result.Message, Success);
+                    _monitor.ResetFailures();
+                    ShowBalloon("自动登录成功", result.Message, ToolTipIcon.Info);
+                }
+                else
+                {
+                    SetStatus(result.Message, Danger);
+                    _monitor.RecordFailure();
+                    ShowBalloon("自动登录失败", result.Message, ToolTipIcon.Warning);
+                }
             });
         }
 
@@ -989,10 +1010,9 @@ namespace CampusNetAssistant
                 }
                 
                 using var font = new Font("Segoe UI", fontSize, FontStyle.Bold);
-                // Adjust string rectangle slightly down to visually center
-                g.DrawString(text, font, new SolidBrush(TextDark), 
-                    new Rectangle(0, 2, size, size), 
-                    new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                using var textBrush = new SolidBrush(TextDark);
+                using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                g.DrawString(text, font, textBrush, new Rectangle(0, 2, size, size), sf);
             };
             
             parent.Controls.Add(btn);
@@ -1045,10 +1065,10 @@ namespace CampusNetAssistant
                 g.DrawEllipse(pen, buttonRect);
                 
                 using var font = new Font("Segoe UI", fontSize, FontStyle.Bold);
-                var textRect = new Rectangle(shadowOffset, shadowOffset - yOffset , size, size);
-                g.DrawString(text, font, new SolidBrush(TextDark), 
-                    textRect, 
-                    new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                using var textBrush = new SolidBrush(TextDark);
+                using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                var textRect = new Rectangle(shadowOffset, shadowOffset - yOffset, size, size);
+                g.DrawString(text, font, textBrush, textRect, sf);
             };
             
             parent.Controls.Add(btn);
@@ -1090,9 +1110,10 @@ namespace CampusNetAssistant
                     bg = Color.FromArgb(241, 245, 249); // Slate 100
                 }
 
-                e.Graphics.FillRectangle(new SolidBrush(bg), e.Bounds);
+                using var bgBrush = new SolidBrush(bg);
+                e.Graphics.FillRectangle(bgBrush, e.Bounds);
 
-                string text = Items[e.Index].ToString() ?? "";
+                string text = Items[e.Index]?.ToString() ?? "";
                 TextRenderer.DrawText(e.Graphics, text, Font, e.Bounds, ForeColor,
                     TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
             }

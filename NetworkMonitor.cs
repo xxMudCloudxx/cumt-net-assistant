@@ -11,7 +11,8 @@ namespace CampusNetAssistant
     public class NetworkMonitor : IDisposable
     {
         private System.Threading.Timer? _heartbeatTimer;
-        private int  _consecutiveFailures;
+        private CancellationTokenSource? _debounceCts;
+        private volatile int  _consecutiveFailures;
         private bool _disposed;
         private bool _running;
 
@@ -42,17 +43,20 @@ namespace CampusNetAssistant
         public void Stop()
         {
             _running = false;
+            _debounceCts?.Cancel();
+            _debounceCts?.Dispose();
+            _debounceCts = null;
             NetworkChange.NetworkAvailabilityChanged -= OnNetworkChanged;
             _heartbeatTimer?.Change(Timeout.Infinite, Timeout.Infinite);
         }
 
         /// <summary>登录成功后重置熔断计数</summary>
-        public void ResetFailures() => _consecutiveFailures = 0;
+        public void ResetFailures() => Interlocked.Exchange(ref _consecutiveFailures, 0);
 
         /// <summary>登录失败后递增计数</summary>
         public void RecordFailure()
         {
-            _consecutiveFailures++;
+            Interlocked.Increment(ref _consecutiveFailures);
             if (IsFrozen)
                 StatusChanged?.Invoke($"连续 {MaxFailures} 次登录失败，已暂停自动重连（请手动登录）");
         }
@@ -60,26 +64,46 @@ namespace CampusNetAssistant
         // ── 网卡状态变化 ──
         private async void OnNetworkChanged(object? sender, NetworkAvailabilityEventArgs e)
         {
-            if (!e.IsAvailable || IsFrozen || !_running) return;
+            try
+            {
+                if (!e.IsAvailable || IsFrozen || !_running) return;
 
-            StatusChanged?.Invoke("检测到网络重新连接，3 秒后自动登录…");
-            await Task.Delay(3000);
+                // 取消之前的延迟登录，避免快速网络切换时并发重登
+                _debounceCts?.Cancel();
+                _debounceCts = new CancellationTokenSource();
+                var token = _debounceCts.Token;
 
-            if (ReloginRequested != null)
-                await ReloginRequested.Invoke();
+                StatusChanged?.Invoke("检测到网络重新连接，3 秒后自动登录…");
+                await Task.Delay(3000, token);
+
+                if (ReloginRequested != null)
+                    await ReloginRequested.Invoke();
+            }
+            catch (OperationCanceledException) { /* debounce 取消，忽略 */ }
+            catch (Exception ex)
+            {
+                StatusChanged?.Invoke($"网络变化处理异常: {ex.Message}");
+            }
         }
 
         // ── 心跳检测 ──
         private async void HeartbeatCallback(object? state)
         {
-            if (IsFrozen || !_running) return;
-
-            bool online = await PingExternalAsync();
-            if (!online)
+            try
             {
-                StatusChanged?.Invoke("心跳检测：外网不通，尝试重新登录…");
-                if (ReloginRequested != null)
-                    await ReloginRequested.Invoke();
+                if (IsFrozen || !_running) return;
+
+                bool online = await PingExternalAsync();
+                if (!online)
+                {
+                    StatusChanged?.Invoke("心跳检测：外网不通，尝试重新登录…");
+                    if (ReloginRequested != null)
+                        await ReloginRequested.Invoke();
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusChanged?.Invoke($"心跳检测异常: {ex.Message}");
             }
         }
 
@@ -101,6 +125,7 @@ namespace CampusNetAssistant
             _disposed = true;
             Stop();
             _heartbeatTimer?.Dispose();
+            _debounceCts?.Dispose();
         }
     }
 }
