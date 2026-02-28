@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <item>
-  <version>1.1.7</version>
-  <url>https://github.com/xxMudCloudxx/cumt-net-assistant/releases/latest/download/CumtLogin.exe</url>
-  <changelog>https://github.com/xxMudCloudxx/cumt-net-assistant/releases/tag/v1.1.7</changelog>
+  <version>1.1.8</version>
+  <url>https://ghproxy.net/https://github.com/xxMudCloudxx/cumt-net-assistant/releases/latest/download/CumtLogin.exe</url>
+  <changelog>https://github.com/xxMudCloudxx/cumt-net-assistant/releases/tag/v1.1.8</changelog>
   <mandatory>false</mandatory>
   <args></args>
 </item>
