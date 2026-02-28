@@ -49,6 +49,7 @@ namespace CampusNetAssistant
         private bool _adapterDisabled = false;
         private bool _firstShow = true;
         private bool _isManualUpdateCheck = false;
+        private bool _hasShownLoginSuccess = false;
 
         // ══════════════ 构造 ══════════════
         public MainForm()
@@ -149,7 +150,8 @@ namespace CampusNetAssistant
                 try
                 {
                     var http = LoginService.SharedHttpClient;
-                    var updateUrl = "https://cdn.jsdelivr.net/gh/xxMudCloudxx/cumt-net-assistant@main/update.xml";
+                    // 使用带时间戳的 ghproxy.net 代替 jsdelivr，避免 jsdelivr 缓存迟迟不更新
+                    var updateUrl = $"https://ghproxy.net/https://raw.githubusercontent.com/xxMudCloudxx/cumt-net-assistant/main/update.xml?t={DateTime.Now.Ticks}";
                     var content = await http.GetStringAsync(updateUrl);
                     diagContent = $"\n--- 诊断下载结果 ---\n" +
                                   $"URL: {updateUrl}\n" +
@@ -217,8 +219,8 @@ namespace CampusNetAssistant
             // 添加错误处理，避免因网络或服务器问题导致程序异常
             try
             {
-                // 使用 jsDelivr CDN 加速，避免直连 GitHub 被 GFW/SNI 阻断
-                var updateUrl = "https://cdn.jsdelivr.net/gh/xxMudCloudxx/cumt-net-assistant@main/update.xml";
+                // 使用带时间戳的 ghproxy.net 代替 jsdelivr 缓存，避免 jsdelivr 更新不及时
+                var updateUrl = $"https://ghproxy.net/https://raw.githubusercontent.com/xxMudCloudxx/cumt-net-assistant/main/update.xml?t={DateTime.Now.Ticks}";
                 System.Diagnostics.Debug.WriteLine($"[AutoUpdater] Starting update check: {updateUrl}, InstalledVersion={AutoUpdater.InstalledVersion}");
                 AutoUpdater.Start(updateUrl);
             }
@@ -415,7 +417,11 @@ namespace CampusNetAssistant
             {
                 SetStatus(result.Message, Success);
                 _monitor.ResetFailures();
-                ShowBalloon("登录成功", result.Message, ToolTipIcon.Info);
+                if (!_hasShownLoginSuccess)
+                {
+                    ShowBalloon("登录成功", result.Message, ToolTipIcon.Info);
+                    _hasShownLoginSuccess = true;
+                }
             }
             else
             {
@@ -438,7 +444,11 @@ namespace CampusNetAssistant
                 {
                     SetStatus(result.Message, Success);
                     _monitor.ResetFailures();
-                    ShowBalloon("自动登录成功", result.Message, ToolTipIcon.Info);
+                    if (!_hasShownLoginSuccess)
+                    {
+                        ShowBalloon("自动登录成功", result.Message, ToolTipIcon.Info);
+                        _hasShownLoginSuccess = true;
+                    }
                 }
                 else
                 {

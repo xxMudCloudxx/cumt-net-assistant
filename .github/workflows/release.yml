@@ -39,7 +39,7 @@ jobs:
           <?xml version="1.0" encoding="UTF-8"?>
           <item>
             <version>$version</version>
-            <url>https://github.com/xxMudCloudxx/cumt-net-assistant/releases/latest/download/CumtLogin.exe</url>
+            <url>https://ghproxy.net/https://github.com/xxMudCloudxx/cumt-net-assistant/releases/latest/download/CumtLogin.exe</url>
             <changelog>https://github.com/xxMudCloudxx/cumt-net-assistant/releases/tag/${{ github.ref_name }}</changelog>
             <mandatory>false</mandatory>
             <args></args>
@@ -73,10 +73,3 @@ jobs:
           }
         env:
           GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
-
-      - name: Purge jsDelivr CDN cache
-        shell: pwsh
-        run: |
-          Write-Host "Purging jsDelivr cache for update.xml..."
-          $response = Invoke-RestMethod -Uri "https://purge.jsdelivr.net/gh/xxMudCloudxx/cumt-net-assistant@main/update.xml" -Method Get
-          Write-Host "Purge result: $($response | ConvertTo-Json -Depth 3)"
