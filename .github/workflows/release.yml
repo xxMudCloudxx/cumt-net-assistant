@@ -39,7 +39,7 @@ jobs:
           <?xml version="1.0" encoding="UTF-8"?>
           <item>
             <version>$version</version>
-            <url>https://github.com/xxMudCloudxx/cumt-net-assistant/releases/latest/download/cumt校园网助手.exe</url>
+            <url>https://github.com/xxMudCloudxx/cumt-net-assistant/releases/latest/download/CumtLogin.exe</url>
             <changelog>https://github.com/xxMudCloudxx/cumt-net-assistant/releases/tag/${{ github.ref_name }}</changelog>
             <mandatory>false</mandatory>
             <args></args>
@@ -50,13 +50,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
+            publish_output/CumtLogin.exe
             update.xml
-        env:
-          GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
-
-      - name: Upload EXE with Chinese name using GitHub CLI
-        shell: pwsh
-        run: gh release upload ${{ github.ref_name }} publish_output/cumt校园网助手.exe --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
 

@@ -18,9 +18,9 @@
 
 ## 🚀 快速使用
 
-1. 在右侧 **Releases** 中下载最新版的 `cumt校园网助手.zip`（或者对应的 exe）。
+1. 在右侧 **Releases** 中下载最新版的 `CumtLogin.zip`（或者对应的 exe）。
 2. 解压缩或移动到一个固定目录（例如 `D:\Programs\cumt-net-assistant`）。
-3. 双击运行 `cumt校园网助手.exe`。
+3. 双击运行 `CumtLogin.exe`。
 4. 在主界面中输入你的 **学号** 和 **密码**，并选择对应的 **运营商**。
 5. （可选）勾选 **开机自启** 和 **自动登录**，实现完全免打扰的自动联网。
 6. 点击 **保存并登录**。
@@ -64,7 +64,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\local-release-test.ps1 -Versi
 
 - Release 编译
 - 与 GitHub Actions 相同参数的 `dotnet publish`
-- 启动 `cumt校园网助手.exe` 冒烟检查（是否启动即崩溃）
+- 启动 `CumtLogin.exe` 冒烟检查（是否启动即崩溃）
 - 打 zip 后再解压，并再次启动冒烟检查（模拟用户下载解压后的场景）
 
 通过后再打 tag 发布，可显著降低线上回滚概率。

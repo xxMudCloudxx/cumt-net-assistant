@@ -7,7 +7,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyTitle>CUMT校园网助手</AssemblyTitle>
-    <AssemblyName>cumt校园网助手</AssemblyName>
+    <AssemblyName>CumtLogin</AssemblyName>
     <Product>CampusNetAssistant</Product>
     <Version>1.0.0</Version>
     <ApplicationIcon>icon.ico</ApplicationIcon>
