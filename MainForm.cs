@@ -144,7 +144,7 @@ namespace CampusNetAssistant
                 {
                     using var http = new HttpClient();
                     http.Timeout = TimeSpan.FromSeconds(10);
-                    var updateUrl = "https://cdn.jsdelivr.net/gh/xxMudCloudxx/cumt-campus-ant@main/update.xml";
+                    var updateUrl = "https://cdn.jsdelivr.net/gh/xxMudCloudxx/cumt-net-assistant@main/update.xml";
                     var content = http.GetStringAsync(updateUrl).Result;
                     diagContent = $"\n--- 诊断下载结果 ---\n" +
                                   $"URL: {updateUrl}\n" +
@@ -171,7 +171,7 @@ namespace CampusNetAssistant
                     {
                         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                         {
-                            FileName = "https://github.com/xxMudCloudxx/cumt-campus-ant/releases",
+                            FileName = "https://github.com/xxMudCloudxx/cumt-net-assistant/releases",
                             UseShellExecute = true
                         });
                     }
@@ -208,7 +208,7 @@ namespace CampusNetAssistant
             try
             {
                 // 使用 jsDelivr CDN 加速，避免直连 GitHub 被 GFW/SNI 阻断
-                var updateUrl = "https://cdn.jsdelivr.net/gh/xxMudCloudxx/cumt-campus-ant@main/update.xml";
+                var updateUrl = "https://cdn.jsdelivr.net/gh/xxMudCloudxx/cumt-net-assistant@main/update.xml";
                 System.Diagnostics.Debug.WriteLine($"[AutoUpdater] Starting update check: {updateUrl}, InstalledVersion={AutoUpdater.InstalledVersion}");
                 AutoUpdater.Start(updateUrl);
             }
@@ -528,6 +528,7 @@ namespace CampusNetAssistant
         {
             // ── 窗体基本属性 ──
             Text            = "CUMT校园网助手";
+            try { this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
             Size            = new Size(460, 720);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox     = false;
@@ -638,6 +639,7 @@ namespace CampusNetAssistant
             var aboutForm = new Form
             {
                 Text            = "关于",
+                Icon            = this.Icon,
                 Size            = new Size(400, 320),
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox     = false,
@@ -693,7 +695,7 @@ namespace CampusNetAssistant
 
             var lblGithub = new LinkLabel
             {
-                Text          = "github.com/xxMudCloudxx/cumt-campus-ant",
+                Text          = "github.com/xxMudCloudxx/cumt-net-assistant",
                 Location      = new Point(145, y),
                 Size          = new Size(200, 20),
                 LinkColor     = Primary,
@@ -708,7 +710,7 @@ namespace CampusNetAssistant
                 {
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                     {
-                        FileName = "https://github.com/xxMudCloudxx/cumt-campus-ant",
+                        FileName = "https://github.com/xxMudCloudxx/cumt-net-assistant",
                         UseShellExecute = true
                     });
                 }

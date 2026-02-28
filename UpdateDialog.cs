@@ -29,6 +29,7 @@ namespace CampusNetAssistant
         {
             // ── 窗体属性 ──
             Text = "发现新版本";
+            try { this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
             Size = new Size(420, 360); // 增加一点高度给系统标题栏
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;

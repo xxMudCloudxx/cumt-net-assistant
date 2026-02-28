@@ -7,15 +7,16 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyTitle>CUMT校园网助手</AssemblyTitle>
+    <AssemblyName>cumt校园网助手</AssemblyName>
     <Product>CampusNetAssistant</Product>
     <Version>1.0.0</Version>
     <ApplicationIcon>icon.ico</ApplicationIcon>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <Authors>谷粒多 (xxMudCloudxx)</Authors>
     <Copyright>Copyright © 2026 谷粒多</Copyright>
-    <RepositoryUrl>https://github.com/xxMudCloudxx/cumt-campus-ant</RepositoryUrl>
+    <RepositoryUrl>https://github.com/xxMudCloudxx/cumt-net-assistant</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageProjectUrl>https://github.com/xxMudCloudxx/cumt-campus-ant</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/xxMudCloudxx/cumt-net-assistant</PackageProjectUrl>
     <Description>CUMT校园网助手 - 轻量级校园网自动登录工具</Description>
     <!--
       保持 full trimming 以减小包体积，但精准保留 AutoUpdater.NET 及其依赖的

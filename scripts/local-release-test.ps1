@@ -7,13 +7,11 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $publishDir = Join-Path $root "release_local"
-$zipPath = Join-Path $root "CampusNetAssistant.local.zip"
 $extractDir = Join-Path $root "release_local_extracted"
-$exeName = "CampusNetAssistant.exe"
 
 Write-Host "==> [1/6] Clean old outputs"
 Remove-Item -Recurse -Force $publishDir -ErrorAction SilentlyContinue
-Remove-Item -Force $zipPath -ErrorAction SilentlyContinue
+Get-ChildItem -Path $root -Filter "*.local.zip" | Remove-Item -Force -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force $extractDir -ErrorAction SilentlyContinue
 
 Write-Host "==> [2/6] Build Release"
@@ -32,10 +30,13 @@ try {
         -p:DebugType=embedded `
         -o $publishDir
 
-    $exePath = Join-Path $publishDir $exeName
-    if (-not (Test-Path $exePath)) {
-        throw "Publish output missing: $exePath"
+    $exePath = Get-ChildItem -Path $publishDir -Filter "*.exe" | Where-Object { $_.Name -notmatch "createdump" } | Select-Object -ExpandProperty FullName -First 1
+    if (-not $exePath -or -not (Test-Path $exePath)) {
+        throw "Publish output missing: No executable found in publish directory."
     }
+
+    $exeName = Split-Path $exePath -Leaf
+    $zipPath = Join-Path $root ($exeName.Replace(".exe", ".local.zip"))
 
     $sizeMb = [math]::Round((Get-Item $exePath).Length / 1MB, 2)
     Write-Host "Published EXE size: $sizeMb MB"
