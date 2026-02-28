@@ -31,15 +31,16 @@ jobs:
       - name: Publish app
         run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=true -p:EnableCompressionInSingleFile=true -p:_SuppressWinFormsTrimError=true -p:DebugType=embedded -p:Version=${{ steps.version.outputs.VERSION }} -o publish_output
 
-      - name: Generate update.xml
+      - name: Generate zip and update.xml
         shell: pwsh
         run: |
+          Compress-Archive -Path publish_output/CumtLogin.exe -DestinationPath publish_output/CumtLogin.zip
           $version = "${{ steps.version.outputs.VERSION }}"
           @"
           <?xml version="1.0" encoding="UTF-8"?>
           <item>
             <version>$version</version>
-            <url>https://ghfast.top/https://github.com/xxMudCloudxx/cumt-net-assistant/releases/latest/download/CumtLogin.exe</url>
+            <url>https://ghfast.top/https://github.com/xxMudCloudxx/cumt-net-assistant/releases/latest/download/CumtLogin.zip</url>
             <changelog>https://github.com/xxMudCloudxx/cumt-net-assistant/releases/tag/${{ github.ref_name }}</changelog>
             <mandatory>false</mandatory>
             <args></args>
@@ -50,6 +51,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
+            publish_output/CumtLogin.zip
             publish_output/CumtLogin.exe
             update.xml
         env:
