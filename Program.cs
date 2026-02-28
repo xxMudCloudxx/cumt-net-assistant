@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -8,6 +10,14 @@ namespace CampusNetAssistant
     {
         private static Mutex? _mutex;
 
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        private const int SW_RESTORE = 9;
+
         [STAThread]
         static void Main()
         {
@@ -16,8 +26,21 @@ namespace CampusNetAssistant
 
             if (!createdNew)
             {
-                MessageBox.Show("CUMT校园网助手已在运行中！", "提示",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // 唤起已运行的进程主窗口
+                Process currentProcess = Process.GetCurrentProcess();
+                foreach (Process process in Process.GetProcessesByName(currentProcess.ProcessName))
+                {
+                    if (process.Id != currentProcess.Id)
+                    {
+                        IntPtr hWnd = process.MainWindowHandle;
+                        if (hWnd != IntPtr.Zero)
+                        {
+                            ShowWindow(hWnd, SW_RESTORE);
+                            SetForegroundWindow(hWnd);
+                        }
+                        break;
+                    }
+                }
                 return;
             }
 
