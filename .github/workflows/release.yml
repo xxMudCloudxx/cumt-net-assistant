@@ -50,8 +50,13 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            publish_output/cumt校园网助手.exe
             update.xml
+        env:
+          GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
+
+      - name: Upload EXE with Chinese name using GitHub CLI
+        shell: pwsh
+        run: gh release upload ${{ github.ref_name }} publish_output/cumt校园网助手.exe --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
 
