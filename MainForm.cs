@@ -50,6 +50,7 @@ namespace CampusNetAssistant
         private bool _firstShow = true;
         private bool _isManualUpdateCheck = false;
         private bool _hasShownLoginSuccess = false;
+        private bool _isUpdating = false;
 
         // ══════════════ 构造 ══════════════
         public MainForm()
@@ -64,6 +65,7 @@ namespace CampusNetAssistant
 
             // ── 更新检查事件绑定 ──
             AutoUpdater.CheckForUpdateEvent += OnUpdateCheckComplete;
+            AutoUpdater.ApplicationExitEvent += OnApplicationExit;
 
             // ── 自动启动 ──
             if (_config.AutoLogin && !string.IsNullOrEmpty(_config.StudentId))
@@ -113,8 +115,13 @@ namespace CampusNetAssistant
                     var dialogResult = dlg.ShowDialog(this);
                     if (dialogResult == DialogResult.OK)
                     {
-                        // 用户点击了「立即更新」，触发下载
-                        AutoUpdater.DownloadUpdate(args);
+                        // 用户点击了「立即更新」，触发下载并启动 ZipExtractor
+                        // DownloadUpdate 只负责下载+启动安装器，不会自动退出应用
+                        if (AutoUpdater.DownloadUpdate(args))
+                        {
+                            // 下载成功、ZipExtractor 已启动，必须退出当前应用让它覆盖文件
+                            OnApplicationExit();
+                        }
                     }
                     else if (dialogResult == DialogResult.Ignore)
                     {
@@ -192,6 +199,24 @@ namespace CampusNetAssistant
             {
                 System.Diagnostics.Debug.WriteLine($"[UpdateCheck] 未处理异常: {ex}");
             }
+        }
+
+        /// <summary>
+        /// 新版本下载完成、准备启动安装程序时由 AutoUpdater 触发，
+        /// 自动关闭托盘图标并退出当前应用。
+        /// </summary>
+        private void OnApplicationExit()
+        {
+            // 设置标志，让 OnFormClosing 不再拦截关闭
+            _isUpdating = true;
+            try
+            {
+                _trayIcon.Visible = false;
+                _monitor.Stop();
+            }
+            catch { }
+            // 强制终止进程，让 ZipExtractor 可以覆盖文件并重启应用
+            Environment.Exit(0);
         }
 
         private void CheckForUpdates()
@@ -287,7 +312,8 @@ namespace CampusNetAssistant
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            if (e.CloseReason == CloseReason.UserClosing)
+            // 正在更新时不拦截关闭，让 AutoUpdater 的 CloseMainWindow() 能正常关闭窗口
+            if (e.CloseReason == CloseReason.UserClosing && !_isUpdating)
             {
                 e.Cancel = true;
                 Hide();
