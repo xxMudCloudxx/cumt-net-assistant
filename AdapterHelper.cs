@@ -66,7 +66,7 @@ namespace CampusNetAssistant
             }
         }
 
-        /// <summary>检查指定适配器当前是否处于启用状态</summary>
+        /// <summary>检查指定适配器当前是否处于启用状态（OperationalStatus）</summary>
         public static bool IsAdapterEnabled(string adapterName)
         {
             foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
@@ -75,6 +75,53 @@ namespace CampusNetAssistant
                     return nic.OperationalStatus == OperationalStatus.Up;
             }
             return false;
+        }
+
+        /// <summary>
+        /// 检查指定适配器的管理状态是否为启用（通过 netsh 查询真实管理状态）。
+        /// 与 IsAdapterEnabled 不同，此方法区分"管理员禁用"和"物理断开"。
+        /// </summary>
+        public static bool IsAdapterAdminEnabled(string adapterName)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName               = "netsh",
+                    Arguments              = $"interface show interface name=\"{adapterName}\"",
+                    RedirectStandardOutput = true,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true
+                };
+
+                using var process = Process.Start(psi);
+                if (process == null) return true;
+
+                string output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(3000);
+
+                // 逐行查找管理状态行
+                foreach (var line in output.Split('\n'))
+                {
+                    var trimmed = line.Trim();
+                    // English: "Administrative state:   Enabled / Disabled"
+                    // Chinese: "管理状态:               已启用 / 已禁用"
+                    if (trimmed.StartsWith("Admin", StringComparison.OrdinalIgnoreCase) ||
+                        trimmed.StartsWith("管理"))
+                    {
+                        // 如果该行包含 Disabled / 已禁用，则适配器为禁用状态
+                        if (trimmed.Contains("Disabled", StringComparison.OrdinalIgnoreCase) ||
+                            trimmed.Contains("已禁用"))
+                            return false;
+                        return true;
+                    }
+                }
+                return true; // 无法判断时默认为启用
+            }
+            catch
+            {
+                return true; // 出错时默认为启用
+            }
         }
     }
 }

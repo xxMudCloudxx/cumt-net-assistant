@@ -46,7 +46,6 @@ namespace CampusNetAssistant
         // ══════════════ 业务 ══════════════
         private readonly NetworkMonitor _monitor = new();
         private AppConfig _config = new();
-        private bool _adapterDisabled = false;
         private bool _firstShow = true;
         private bool _isManualUpdateCheck = false;
         private bool _hasShownLoginSuccess = false;
@@ -58,6 +57,7 @@ namespace CampusNetAssistant
             BuildUI();
             BuildTray();
             LoadConfig();
+            UpdateToggleButtonText();
 
             // 网络守护事件绑定
             _monitor.StatusChanged    += msg => Invoke(() => SetStatus(msg, Warning));
@@ -509,20 +509,44 @@ namespace CampusNetAssistant
                 ShowBalloon("提示", "请先选择要操作的网络适配器", ToolTipIcon.Warning);
                 return;
             }
-            _adapterDisabled = !_adapterDisabled;
-            bool ok = AdapterHelper.SetAdapterState(name, !_adapterDisabled);
+
+            // 查询当前适配器的真实管理状态，决定要执行的操作
+            bool currentlyEnabled = AdapterHelper.IsAdapterAdminEnabled(name);
+            bool ok = AdapterHelper.SetAdapterState(name, !currentlyEnabled); // 启用↔禁用 取反
+
             if (ok)
             {
-                string state = _adapterDisabled ? "已禁用" : "已启用";
-                _btnToggle.Text = _adapterDisabled ? "🔌 启用网卡" : "🔌 禁用网卡";
-                SetStatus($"适配器 [{name}] {state}", _adapterDisabled ? Warning : Success);
+                string state = currentlyEnabled ? "已禁用" : "已启用";
+                SetStatus($"适配器 [{name}] {state}", currentlyEnabled ? Warning : Success);
                 ShowBalloon("网卡操作", $"适配器 [{name}] {state}", ToolTipIcon.Info);
             }
             else
             {
-                _adapterDisabled = !_adapterDisabled; // 回滚
                 SetStatus("操作失败（可能已取消 UAC 授权）", Danger);
             }
+
+            // 无论成功与否都刷新按钮文本（读取最新状态）
+            UpdateToggleButtonText();
+        }
+
+        /// <summary>根据当前选中适配器的真实管理状态，更新禁用/启用按钮文本与颜色</summary>
+        private void UpdateToggleButtonText()
+        {
+            string name = _cboAdapter.SelectedItem?.ToString() ?? "";
+            if (string.IsNullOrEmpty(name))
+            {
+                _btnToggle.Text = "🔌 禁用网卡";
+                _btnToggle.Tag = ((Color, Color))(Color.FromArgb(148, 163, 184), Color.FromArgb(100, 116, 139));
+                _btnToggle.Invalidate();
+                return;
+            }
+
+            bool isEnabled = AdapterHelper.IsAdapterAdminEnabled(name);
+            _btnToggle.Text = isEnabled ? "🔌 禁用网卡" : "🔌 启用网卡";
+            _btnToggle.Tag = isEnabled
+                ? ((Color, Color))(Color.FromArgb(148, 163, 184), Color.FromArgb(100, 116, 139))
+                : ((Color, Color))(Warning, Color.FromArgb(217, 119, 6));
+            _btnToggle.Invalidate();
         }
 
         private void ShowBalloon(string title, string text, ToolTipIcon icon)
@@ -570,11 +594,46 @@ namespace CampusNetAssistant
 
         private void RefreshAdapters()
         {
+            // 记住刷新前的适配器列表，防止已禁用的适配器消失
+            var previousItems = new List<string>();
+            foreach (var item in _cboAdapter.Items)
+                previousItems.Add(item.ToString()!);
+
+            var currentSelection = _cboAdapter.SelectedItem?.ToString() ?? "";
+
             _cboAdapter.Items.Clear();
-            foreach (var name in AdapterHelper.GetAllAdapters())
+
+            // 获取当前可见的适配器
+            var activeNames = new HashSet<string>(AdapterHelper.GetAllAdapters());
+
+            // 检查之前列表中消失的适配器是否是被管理员禁用了（而非物理移除）
+            foreach (var prev in previousItems)
+            {
+                if (!activeNames.Contains(prev))
+                {
+                    try
+                    {
+                        if (!AdapterHelper.IsAdapterAdminEnabled(prev))
+                            activeNames.Add(prev); // 被禁用的适配器保留在列表中
+                    }
+                    catch { }
+                }
+            }
+
+            foreach (var name in activeNames)
                 _cboAdapter.Items.Add(name);
-            if (_cboAdapter.Items.Count > 0)
+
+            // 恢复选择
+            if (!string.IsNullOrEmpty(currentSelection))
+            {
+                int idx = _cboAdapter.Items.IndexOf(currentSelection);
+                if (idx >= 0) _cboAdapter.SelectedIndex = idx;
+                else if (_cboAdapter.Items.Count > 0) _cboAdapter.SelectedIndex = 0;
+            }
+            else if (_cboAdapter.Items.Count > 0)
+            {
                 _cboAdapter.SelectedIndex = 0;
+            }
         }
 
         // ══════════════════════════════════════
@@ -639,8 +698,9 @@ namespace CampusNetAssistant
             cy = 44;
             MakeLabel(card2, "适配器", 20, cy);
             _cboAdapter = MakeComboBox(card2, 90, cy, 218);
+            _cboAdapter.SelectedIndexChanged += (_, _) => UpdateToggleButtonText();
             _btnRefresh = MakeCircularIconButton(card2, "⟳", 318, cy - 2, 34, 15f);
-            _btnRefresh.Click += (_, _) => RefreshAdapters();
+            _btnRefresh.Click += (_, _) => { RefreshAdapters(); UpdateToggleButtonText(); };
             cy += 48;
             _chkAutoStart = MakeCheckBox(card2, "开机自启",  20, cy);
             _chkAutoLogin = MakeCheckBox(card2, "自动登录", 160, cy);
@@ -977,12 +1037,13 @@ namespace CampusNetAssistant
         {
             var btn = new Button
             {
-                Text      = "",
+                Text      = text,
                 Location  = new Point(x, y),
                 Size      = new Size(w, h),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.Transparent,
                 Cursor    = Cursors.Hand,
+                Tag       = (bg, bgHover), // 存储颜色对，便于运行时动态修改
             };
             btn.FlatAppearance.BorderSize = 0;
             btn.FlatAppearance.BorderColor = Color.FromArgb(0, 255, 255, 255); // 防黑框
@@ -997,12 +1058,17 @@ namespace CampusNetAssistant
             btn.Paint += (s, e) => {
                 var g = e.Graphics;
                 g.SmoothingMode = SmoothingMode.AntiAlias;
+
+                // 从 Tag 读取颜色对（支持运行时动态修改按钮颜色）
+                var colors = btn.Tag is (Color c1, Color c2) ? (c1, c2) : (bg, bgHover);
+
                 using var path = RoundedRect(new Rectangle(0, 0, w - 1, h - 1), 8);
-                using var fill = new SolidBrush(isHovered ? bgHover : bg);
+                using var fill = new SolidBrush(isHovered ? colors.Item2 : colors.Item1);
                 g.FillPath(fill, path);
                 
+                // 使用 btn.Text 而非闭包捕获的 text，确保文本变更后 UI 能正确重绘
                 using var font = new Font("Microsoft YaHei UI", 10.5f, FontStyle.Bold);
-                TextRenderer.DrawText(g, text, font, new Rectangle(0, 0, w, h), Color.White,
+                TextRenderer.DrawText(g, btn.Text, font, new Rectangle(0, 0, w, h), Color.White,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             };
             
