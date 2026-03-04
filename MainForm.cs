@@ -644,14 +644,24 @@ namespace CampusNetAssistant
                 string state = currentlyEnabled ? "已禁用" : "已启用";
                 SetStatus($"适配器 [{name}] {state}", currentlyEnabled ? Warning : Success);
                 ShowBalloon("网卡操作", $"适配器 [{name}] {state}", ToolTipIcon.Info);
+
+                // 操作成功：直接用已知的新状态更新按钮，避免立即查询时状态尚未生效
+                bool newEnabled = !currentlyEnabled;
+                _btnToggle.Text = newEnabled ? "🔌 禁用网卡" : "🔌 启用网卡";
+                _btnToggle.Tag = newEnabled
+                    ? ((Color, Color))(Color.FromArgb(148, 163, 184), Color.FromArgb(100, 116, 139))
+                    : ((Color, Color))(Warning, Color.FromArgb(217, 119, 6));
+                _btnToggle.Invalidate();
+
+                // 延迟 1.5 秒后再次刷新，确保按钮与系统真实状态一致
+                _ = Task.Delay(1500).ContinueWith(_ => Invoke(UpdateToggleButtonText));
             }
             else
             {
                 SetStatus("操作失败（可能已取消 UAC 授权）", Danger);
+                // 操作失败时重新查询状态刷新按钮
+                UpdateToggleButtonText();
             }
-
-            // 无论成功与否都刷新按钮文本（读取最新状态）
-            UpdateToggleButtonText();
         }
 
         /// <summary>根据当前选中适配器的真实管理状态，更新禁用/启用按钮文本与颜色</summary>
