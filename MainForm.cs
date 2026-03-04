@@ -51,6 +51,16 @@ namespace CampusNetAssistant
         private bool _hasShownLoginSuccess = false;
         private bool _isUpdating = false;
 
+        // GitHub 代理源列表（按优先级排列），会自动降级到下一个
+        private static readonly string _rawFileBase = "https://raw.githubusercontent.com/xxMudCloudxx/cumt-net-assistant/main/update.xml";
+        private static readonly string[] _proxyPrefixes = new[]
+        {
+            "https://ghfast.top/",
+            "https://ghproxy.net/",
+            "https://gh-proxy.com/",
+            ""  // 直连（无代理）
+        };
+
         // ══════════════ 构造 ══════════════
         public MainForm()
         {
@@ -75,17 +85,19 @@ namespace CampusNetAssistant
             }
 
             // ── 异步自动检查更新 ──
-            // 放到后台任务执行，防止网络卡顿时导致程序启动慢或 UI 假死
-            _ = Task.Run(async () => 
-            {
-                // 等待几秒钟让程序先完全启动
-                await Task.Delay(3000);
-                Invoke(() => CheckForUpdates());
-            });
+            // 延迟几秒再检查，让程序先完全启动
+            _ = DelayedUpdateCheckAsync();
         }
 
         private async void OnUpdateCheckComplete(UpdateInfoEventArgs args)
         {
+            // Synchronous=false 时，回调在后台线程触发，需要回到 UI 线程
+            if (InvokeRequired)
+            {
+                Invoke(() => OnUpdateCheckComplete(args));
+                return;
+            }
+
             try
             {
             if (args.Error == null)
@@ -115,6 +127,8 @@ namespace CampusNetAssistant
                     var dialogResult = dlg.ShowDialog(this);
                     if (dialogResult == DialogResult.OK)
                     {
+                        // 为下载 URL 动态添加可用的代理前缀，避免硬编码单一代理
+                        args.DownloadURL = await PrependWorkingProxyAsync(args.DownloadURL);
                         // 用户点击了「立即更新」，触发下载并启动 ZipExtractor
                         // DownloadUpdate 只负责下载+启动安装器，不会自动退出应用
                         if (AutoUpdater.DownloadUpdate(args))
@@ -157,13 +171,32 @@ namespace CampusNetAssistant
                 try
                 {
                     var http = LoginService.SharedHttpClient;
-                    // 使用带时间戳的 ghproxy.net 代替 jsdelivr，避免 jsdelivr 缓存迟迟不更新
-                    var updateUrl = $"https://ghproxy.net/https://raw.githubusercontent.com/xxMudCloudxx/cumt-net-assistant/main/update.xml?t={DateTime.Now.Ticks}";
-                    var content = await http.GetStringAsync(updateUrl);
-                    diagContent = $"\n--- 诊断下载结果 ---\n" +
-                                  $"URL: {updateUrl}\n" +
-                                  $"长度: {content.Length} 字符\n" +
-                                  $"前200字符:\n{content.Substring(0, Math.Min(200, content.Length))}";
+                    // 尝试所有代理源进行诊断下载
+                    string? diagUrl = null;
+                    string? content = null;
+                    foreach (var prefix in _proxyPrefixes)
+                    {
+                        diagUrl = $"{prefix}{_rawFileBase}?t={DateTime.Now.Ticks}";
+                        try
+                        {
+                            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(6));
+                            content = await http.GetStringAsync(new Uri(diagUrl), cts.Token);
+                            break; // 成功就跳出
+                        }
+                        catch { content = null; }
+                    }
+                    
+                    if (content != null)
+                    {
+                        diagContent = $"\n--- 诊断下载结果 ---\n" +
+                                      $"URL: {diagUrl}\n" +
+                                      $"长度: {content.Length} 字符\n" +
+                                      $"前200字符:\n{content.Substring(0, Math.Min(200, content.Length))}";
+                    }
+                    else
+                    {
+                        diagContent = "\n--- 诊断下载：所有代理源均失败 ---";
+                    }
                 }
                 catch (Exception diagEx)
                 {
@@ -202,6 +235,15 @@ namespace CampusNetAssistant
         }
 
         /// <summary>
+        /// 延迟数秒后在 UI 线程执行自动更新检查。
+        /// </summary>
+        private async Task DelayedUpdateCheckAsync()
+        {
+            await Task.Delay(3000);
+            await CheckForUpdatesAsync();
+        }
+
+        /// <summary>
         /// 新版本下载完成、准备启动安装程序时由 AutoUpdater 触发，
         /// 自动关闭托盘图标并退出当前应用。
         /// </summary>
@@ -219,7 +261,75 @@ namespace CampusNetAssistant
             Environment.Exit(0);
         }
 
-        private void CheckForUpdates()
+        /// <summary>
+        /// 从多个代理源中探测可用的 update.xml URL，返回第一个能成功访问的地址。
+        /// </summary>
+        private async Task<string?> ProbeUpdateUrlAsync()
+        {
+            var http = LoginService.SharedHttpClient;
+            foreach (var prefix in _proxyPrefixes)
+            {
+                var url = $"{prefix}{_rawFileBase}?t={DateTime.Now.Ticks}";
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(6));
+                    var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[UpdateProbe] OK: {url}");
+                        return url;
+                    }
+                    System.Diagnostics.Debug.WriteLine($"[UpdateProbe] HTTP {(int)response.StatusCode}: {url}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[UpdateProbe] Fail: {url} -> {ex.GetType().Name}: {ex.Message}");
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 为 GitHub 下载链接动态添加可用的代理前缀。
+        /// 依次探测各代理源，返回第一个能通的完整 URL；
+        /// 如果全部失败则返回原始 URL（让 AutoUpdater 自行尝试直连）。
+        /// </summary>
+        private async Task<string> PrependWorkingProxyAsync(string originalUrl)
+        {
+            // 只对 github.com 链接加代理
+            if (!originalUrl.Contains("github.com"))
+                return originalUrl;
+
+            var http = LoginService.SharedHttpClient;
+            foreach (var prefix in _proxyPrefixes)
+            {
+                // 跳过空前缀（直连）先试代理，最后再试直连
+                var proxyUrl = string.IsNullOrEmpty(prefix) ? originalUrl : $"{prefix}{originalUrl}";
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(6));
+                    // 只检查 HEAD，不下载完整文件
+                    using var req = new HttpRequestMessage(HttpMethod.Head, proxyUrl);
+                    var response = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+                    if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.Found
+                        || response.StatusCode == System.Net.HttpStatusCode.MovedPermanently)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[DownloadProbe] OK: {proxyUrl}");
+                        return proxyUrl;
+                    }
+                    System.Diagnostics.Debug.WriteLine($"[DownloadProbe] HTTP {(int)response.StatusCode}: {proxyUrl}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DownloadProbe] Fail: {proxyUrl} -> {ex.GetType().Name}: {ex.Message}");
+                }
+            }
+            // 所有代理都失败，返回原 URL
+            System.Diagnostics.Debug.WriteLine($"[DownloadProbe] All proxies failed, using original: {originalUrl}");
+            return originalUrl;
+        }
+
+        private async Task CheckForUpdatesAsync()
         {
             // 兼容语义化版本后缀（如 1.0.4-local / 1.0.4+gitsha），提取纯数字版本部分
             var rawVersion = Application.ProductVersion;
@@ -238,14 +348,29 @@ namespace CampusNetAssistant
             AutoUpdater.ShowSkipButton = true;
             AutoUpdater.ShowRemindLaterButton = true;
             AutoUpdater.RunUpdateAsAdmin = false;
-            AutoUpdater.Synchronous = true;
+            AutoUpdater.Synchronous = false;
             AutoUpdater.HttpUserAgent = "CampusNetAssistant";
             
-            // 添加错误处理，避免因网络或服务器问题导致程序异常
             try
             {
-                // 使用带时间戳的 ghproxy.net 代替 jsdelivr 缓存，避免 jsdelivr 更新不及时
-                var updateUrl = $"https://ghproxy.net/https://raw.githubusercontent.com/xxMudCloudxx/cumt-net-assistant/main/update.xml?t={DateTime.Now.Ticks}";
+                // 先探测可用的代理源
+                var updateUrl = await ProbeUpdateUrlAsync();
+                if (updateUrl == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("[AutoUpdater] All proxy sources unreachable");
+                    if (_isManualUpdateCheck)
+                    {
+                        MessageBox.Show(
+                            "所有更新源均不可用，请检查网络连接后重试。",
+                            "检查更新",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning
+                        );
+                        _isManualUpdateCheck = false;
+                    }
+                    return;
+                }
+
                 System.Diagnostics.Debug.WriteLine($"[AutoUpdater] Starting update check: {updateUrl}, InstalledVersion={AutoUpdater.InstalledVersion}");
                 AutoUpdater.Start(updateUrl);
             }
@@ -264,7 +389,7 @@ namespace CampusNetAssistant
             }
         }
 
-        private void CheckForUpdatesManually()
+        private async void CheckForUpdatesManually()
         {
             _isManualUpdateCheck = true;
             
@@ -291,7 +416,7 @@ namespace CampusNetAssistant
                 }
             }
             
-            CheckForUpdates();
+            await CheckForUpdatesAsync();
         }
 
         // ── 仅在自动登录已配置时隐藏窗体到托盘 ──
